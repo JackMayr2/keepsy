@@ -1,0 +1,170 @@
+import React, { useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { createYearbook } from '@/src/services/firestore';
+import { generateYearbookVisualOptions } from '@/src/services/openai';
+import { isOpenAIConfigured } from '@/src/config/openai';
+import { logger } from '@/src/utils/logger';
+import { Container, Button, Input, Text } from '@/src/components/ui';
+
+export default function CreateYearbookScreen() {
+  const { userId } = useAuth();
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
+  const [selectedAiUrl, setSelectedAiUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setGenerating(true);
+    try {
+      const urls = await generateYearbookVisualOptions(aiPrompt.trim(), 4);
+      setGeneratedUrls(urls);
+      setSelectedAiUrl(urls[0] ?? null);
+    } catch (e) {
+      logger.error('CreateYearbook', 'generateYearbookVisualOptions failed', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!name.trim() || !userId) return;
+    setLoading(true);
+    try {
+      const id = await createYearbook(userId, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        dueDate: dueDate.trim() || undefined,
+        aiVisualUrl: selectedAiUrl ?? undefined,
+      });
+      setLoading(false);
+      router.replace({ pathname: '/(app)/yearbook/[id]', params: { id } });
+    } catch (e) {
+      setLoading(false);
+      logger.error('CreateYearbook', 'createYearbook failed', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create yearbook');
+    }
+  };
+
+  const canCreate = name.trim();
+  const showAiSection = isOpenAIConfigured();
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.flex}
+    >
+      <Container scroll style={styles.content}>
+        <Text variant="titleLarge" style={styles.title}>
+          Create yearbook
+        </Text>
+        <Input
+          label="Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Alpha Chi 2025"
+        />
+        <Input
+          label="Description (optional)"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="What's this yearbook for?"
+          multiline
+        />
+        <Input
+          label="Due date (optional)"
+          value={dueDate}
+          onChangeText={setDueDate}
+          placeholder="e.g. May 15, 2025"
+        />
+        {showAiSection && (
+          <View style={styles.aiSection}>
+            <Text variant="label" style={styles.aiLabel}>
+              AI cover visual (optional)
+            </Text>
+            <Input
+              value={aiPrompt}
+              onChangeText={setAiPrompt}
+              placeholder="Describe the cover image..."
+            />
+            <Button
+              title={generatedUrls.length ? 'Regenerate' : 'Generate options'}
+              variant="outline"
+              onPress={handleGenerate}
+              loading={generating}
+              style={styles.genBtn}
+            />
+            {generatedUrls.length > 0 && (
+              <View style={styles.grid}>
+                {generatedUrls.map((url) => (
+                  <Pressable
+                    key={url}
+                    style={[styles.gridItem, selectedAiUrl === url && styles.gridItemSelected]}
+                    onPress={() => setSelectedAiUrl(url)}
+                  >
+                    <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+        <Button
+          title="Create"
+          onPress={handleCreate}
+          disabled={!canCreate}
+          loading={loading}
+          style={styles.button}
+        />
+      </Container>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  content: { paddingHorizontal: 24, paddingTop: 24 },
+  title: { marginBottom: 24 },
+  aiSection: { marginTop: 16 },
+  aiLabel: { marginBottom: 8 },
+  genBtn: { marginTop: 8 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+  },
+  gridItem: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  gridItemSelected: {
+    borderColor: '#8B5CF6',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  button: { marginTop: 24 },
+});
