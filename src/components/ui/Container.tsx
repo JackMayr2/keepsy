@@ -46,16 +46,16 @@ export function Container({
   if (scroll) {
     const scrollPaddingBottom = DEFAULT_BOTTOM + extraBottomPadding + insets.bottom;
     return (
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        {...standardScrollViewProps}
-      >
-        <View style={[containerStyle, styles.scrollFill, style]}>
-          <BrandBackground preset={backgroundPreset} />
-          <View style={[contentStyle, { paddingBottom: scrollPaddingBottom }]}>{children}</View>
-        </View>
-      </ScrollView>
+      <View style={[containerStyle, style]}>
+        <BrandBackground preset={backgroundPreset} />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom }]}
+          {...standardScrollViewProps}
+        >
+          <View style={[contentStyle, styles.scrollFill]}>{children}</View>
+        </ScrollView>
+      </View>
     );
   }
 

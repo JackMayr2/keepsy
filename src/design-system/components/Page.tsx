@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { YStack, YStackProps } from 'tamagui';
@@ -48,25 +48,25 @@ export function Page({
 
   if (scroll) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: 'transparent' }}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPadding }}
-        {...standardScrollViewProps}
-      >
-        <YStack flex={1} minHeight="100%" position="relative" overflow="hidden">
-          <BrandBackground preset={backgroundPreset} />
+      <View style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <BrandBackground preset={backgroundPreset} />
+        <ScrollView
+          style={{ flex: 1, backgroundColor: 'transparent' }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPadding }}
+          {...standardScrollViewProps}
+        >
           <YStack
             flex={1}
+            minHeight="100%"
             zIndex={1}
             paddingHorizontal={PAGE_PADDING_H}
             paddingTop={paddingTop}
-            minHeight="100%"
             {...rest}
           >
             {children}
           </YStack>
-        </YStack>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
