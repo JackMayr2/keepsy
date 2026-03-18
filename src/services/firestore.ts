@@ -374,6 +374,35 @@ export async function getDraftsForUser(
   return list;
 }
 
+/** Submissions (drafts with status 'submitted') for a yearbook, optionally for one prompt. */
+export async function getSubmissionsForPrompt(
+  yearbookId: string,
+  promptId?: string
+): Promise<Draft[]> {
+  const db = getFirebaseDb();
+  const q = query(
+    collection(db, DRAFTS),
+    where('yearbookId', '==', yearbookId),
+    where('status', '==', 'submitted')
+  );
+  const snap = await getDocs(q);
+  let list = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      yearbookId: data.yearbookId,
+      promptId: data.promptId,
+      userId: data.userId,
+      content: data.content ?? '',
+      photoURL: data.photoURL,
+      status: 'submitted' as const,
+      updatedAt: data.updatedAt?.toDate?.() ?? data.updatedAt,
+    };
+  });
+  if (promptId) list = list.filter((x) => x.promptId === promptId);
+  return list;
+}
+
 // Polls
 const POLLS = 'polls';
 const POLL_VOTES = 'pollVotes';
@@ -529,51 +558,79 @@ export async function nominateSuperlative(
 // Travels
 const TRAVELS = 'travels';
 
-export async function getTravels(yearbookId: string): Promise<Array<{
+export type Travel = {
   id: string;
   yearbookId: string;
   userId: string;
-  photoURL?: string;
-  placeName?: string;
-  notes?: string;
+  photoURL?: string | null;
+  placeName?: string | null;
+  notes?: string | null;
+  caption?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   taggedUserIds: string[];
   createdAt: unknown;
-}>> {
+};
+
+export async function getTravels(yearbookId: string): Promise<Travel[]> {
   const db = getFirebaseDb();
   const q = query(
     collection(db, TRAVELS),
-    where('yearbookId', '==', yearbookId),
-    orderBy('createdAt', 'desc')
+    where('yearbookId', '==', yearbookId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  const list = snap.docs.map((d) => {
     const data = d.data();
     return {
       id: d.id,
       yearbookId: data.yearbookId,
       userId: data.userId,
-      photoURL: data.photoURL,
-      placeName: data.placeName,
-      notes: data.notes,
+      photoURL: data.photoURL ?? null,
+      placeName: data.placeName ?? null,
+      notes: data.notes ?? null,
+      caption: data.caption ?? data.notes ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       taggedUserIds: data.taggedUserIds ?? [],
       createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
     };
   });
+  list.sort((a, b) => {
+    const toMs = (x: unknown): number => {
+      if (x instanceof Date) return x.getTime();
+      if (x && typeof (x as { toDate: () => Date }).toDate === 'function') return (x as { toDate: () => Date }).toDate().getTime();
+      return 0;
+    };
+    return toMs(b.createdAt) - toMs(a.createdAt);
+  });
+  return list;
 }
 
 export async function createTravel(
   yearbookId: string,
   userId: string,
-  input: { placeName?: string; notes?: string; photoURL?: string; taggedUserIds?: string[] }
+  input: {
+    placeName?: string | null;
+    notes?: string | null;
+    caption?: string | null;
+    photoURL?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    taggedUserIds?: string[];
+  }
 ): Promise<string> {
   const db = getFirebaseDb();
   const ref = doc(collection(db, TRAVELS));
+  const caption = input.caption ?? input.notes ?? null;
   await setDoc(ref, {
     yearbookId,
     userId,
     placeName: input.placeName ?? null,
     notes: input.notes ?? null,
+    caption: caption ?? null,
     photoURL: input.photoURL ?? null,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
     taggedUserIds: input.taggedUserIds ?? [],
     createdAt: new Date(),
   });

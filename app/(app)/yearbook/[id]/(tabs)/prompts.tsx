@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
@@ -15,13 +16,13 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { usePrompts } from '@/src/hooks/usePrompts';
-import { saveDraft } from '@/src/services/firestore';
+import { saveDraft, getSubmissionsForPrompt } from '@/src/services/firestore';
 import { uploadPromptImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
 import { Container, Text, Button, Input } from '@/src/components/ui';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
-import type { Prompt } from '@/src/types/prompt.types';
+import type { Prompt, Draft } from '@/src/types/prompt.types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
@@ -41,6 +42,8 @@ export default function PromptsTab() {
   const [answer, setAnswer] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [submissions, setSubmissions] = useState<Draft[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   useEffect(() => {
     setNavVisible(true);
@@ -92,10 +95,20 @@ export default function PromptsTab() {
     }
   };
 
-  const openModal = (item: Prompt) => {
+  const openModal = async (item: Prompt) => {
     setSelected(item);
     setAnswer('');
     setPhotoUri(null);
+    setSubmissions([]);
+    if (id) {
+      setLoadingSubmissions(true);
+      try {
+        const list = await getSubmissionsForPrompt(id, item.id);
+        setSubmissions(list);
+      } finally {
+        setLoadingSubmissions(false);
+      }
+    }
   };
 
   if (loading) {
@@ -135,6 +148,33 @@ export default function PromptsTab() {
           >
             <Text variant="title" style={styles.modalTitle}>
               {selected?.text}
+            </Text>
+            {submissions.length > 0 && (
+              <View style={styles.submissionsSection}>
+                <Text variant="label" color="secondary" style={styles.submissionsLabel}>
+                  Answers from yearbook ({submissions.length})
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.submissionsScroll}>
+                  {submissions.map((s) => (
+                    <View key={s.id} style={[styles.submissionChip, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                      {s.photoURL ? (
+                        <Image source={{ uri: s.photoURL }} style={styles.submissionThumb} />
+                      ) : null}
+                      {s.content ? (
+                        <Text variant="caption" numberOfLines={2} style={styles.submissionText}>
+                          {s.content}
+                        </Text>
+                      ) : s.photoURL ? (
+                        <Text variant="caption" color="secondary">Photo</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            {loadingSubmissions && <ActivityIndicator size="small" style={styles.submissionsLoader} />}
+            <Text variant="label" color="secondary" style={styles.yourAnswerLabel}>
+              Your answer
             </Text>
             {selected?.type === 'text' ? (
               <Input
@@ -203,6 +243,20 @@ const styles = StyleSheet.create({
   photoSection: { marginVertical: 8 },
   previewImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, marginBottom: 12 },
   changePhoto: { alignSelf: 'flex-start' },
+  submissionsSection: { marginBottom: 16 },
+  submissionsLabel: { marginBottom: 8 },
+  submissionsScroll: { marginHorizontal: -24 },
+  submissionChip: {
+    width: 120,
+    borderRadius: 12,
+    padding: 8,
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  submissionThumb: { width: '100%', height: 72, borderRadius: 8, marginBottom: 6 },
+  submissionText: {},
+  submissionsLoader: { marginVertical: 8 },
+  yourAnswerLabel: { marginBottom: 8 },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
