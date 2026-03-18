@@ -11,14 +11,17 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useTheme } from '@/src/contexts/ThemeContext';
 import { createYearbook } from '@/src/services/firestore';
 import { generateYearbookVisualOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
+import { BrandLogo, DSIcon } from '@/src/design-system';
 import { Container, Button, Input, Text } from '@/src/components/ui';
 
 export default function CreateYearbookScreen() {
   const { userId } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -72,6 +75,7 @@ export default function CreateYearbookScreen() {
       style={styles.flex}
     >
       <Container scroll style={styles.content}>
+        <BrandLogo size="sm" tagline="launch a signature yearbook" />
         <Text variant="titleLarge" style={styles.title}>
           Create yearbook
         </Text>
@@ -109,6 +113,7 @@ export default function CreateYearbookScreen() {
               variant="outline"
               onPress={handleGenerate}
               loading={generating}
+              icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
               style={styles.genBtn}
             />
             {generatedUrls.length > 0 && (
@@ -131,6 +136,7 @@ export default function CreateYearbookScreen() {
           onPress={handleCreate}
           disabled={!canCreate}
           loading={loading}
+          icon={<DSIcon name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={16} color="#FFFFFF" />}
           style={styles.button}
         />
       </Container>
@@ -140,7 +146,7 @@ export default function CreateYearbookScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingTop: 24 },
+  content: {},
   title: { marginBottom: 24 },
   aiSection: { marginTop: 16 },
   aiLabel: { marginBottom: 8 },

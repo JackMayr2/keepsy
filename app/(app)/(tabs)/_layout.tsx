@@ -1,33 +1,41 @@
-import { SymbolView } from 'expo-symbols';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { View } from 'react-native';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { DSIcon, NavFadeBar, NavIconButton } from '@/src/design-system';
 
 export default function AppTabsLayout() {
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  const headerLeft = () => (
+    <View style={{ paddingLeft: 8 }}>
+      <NavIconButton
+        accessibilityLabel="Back to home"
+        onPress={() => router.replace('/(app)')}
+        icon={<DSIcon name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={20} color={theme.colors.text} />}
+      />
+    </View>
+  );
+
   return (
     <Tabs
+      tabBar={() => null}
       screenOptions={{
-        tabBarActiveTintColor: '#6D28D9',
-        tabBarInactiveTintColor: '#A8A29E',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#F5F5F4',
-          borderTopWidth: 1,
-          paddingTop: 8,
-          height: 64,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
         headerStyle: {
-          backgroundColor: '#F8F6F4',
-          borderBottomColor: '#F5F5F4',
-          borderBottomWidth: 1,
+          backgroundColor: 'transparent',
+          borderBottomWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
+        headerBackground: () => <NavFadeBar edge="top" />,
+        headerTransparent: true,
+        headerTitleAlign: 'center',
         headerTitleStyle: {
-          fontSize: 18,
-          fontWeight: '600',
-          color: '#1C1917',
+          fontSize: 17,
+          fontWeight: '700',
+          color: theme.colors.text,
         },
+        headerTintColor: theme.colors.text,
         headerShown: true,
       }}
     >
@@ -35,39 +43,16 @@ export default function AppTabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'house.fill', android: 'home', web: 'home' }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="drafts"
-        options={{
-          title: 'Drafts',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'doc.text', android: 'document', web: 'document' }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }}
-              tintColor={color}
-              size={24}
-            />
-          ),
+          headerShown: true,
+          headerLeft,
+          headerBackVisible: false,
         }}
       />
     </Tabs>

@@ -1,45 +1,94 @@
 import { spacing, radii, typography, shadows } from './tokens';
+import { keepsyColors, keepsyColorsDark } from '@/src/design-system/theme/keepsy-tokens';
 
-export const lightColors = {
-  primary: '#6D28D9',
-  primaryMuted: '#A78BFA',
-  background: '#F8F6F4',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F3F1EE',
-  text: '#1C1917',
-  textSecondary: '#57534E',
-  textMuted: '#A8A29E',
-  border: '#E7E5E4',
-  borderMuted: '#F5F5F4',
-  pastelPink: '#FDF2F8',
-  pastelLavender: '#F5F3FF',
-  pastelMint: '#ECFDF5',
-  pastelPeach: '#FFF7ED',
-  pastelBlue: '#EFF6FF',
-  success: '#059669',
-  error: '#DC2626',
-  warning: '#D97706',
+export type ThemeColors = {
+  primary: string;
+  primaryMuted: string;
+  accent: string;
+  highlight: string;
+  sun: string;
+  background: string;
+  backgroundSecondary: string;
+  backgroundTertiary: string;
+  backgroundWash: string;
+  surface: string;
+  surfaceSecondary: string;
+  surfaceMuted: string;
+  surfaceGlass: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  borderMuted: string;
+  glassBorder: string;
+  pastelPink: string;
+  pastelLavender: string;
+  pastelMint: string;
+  pastelPeach: string;
+  pastelBlue: string;
+  success: string;
+  error: string;
+  warning: string;
 };
 
-export type ThemeColors = typeof lightColors;
+export const lightColors: ThemeColors = {
+  primary: keepsyColors.brand.primary,
+  primaryMuted: keepsyColors.brand.primaryMuted,
+  accent: keepsyColors.brand.accent,
+  highlight: keepsyColors.brand.highlight,
+  sun: keepsyColors.brand.sun,
+  background: keepsyColors.background.primary,
+  backgroundSecondary: keepsyColors.background.secondary,
+  backgroundTertiary: keepsyColors.background.tertiary,
+  backgroundWash: keepsyColors.background.wash,
+  surface: keepsyColors.surface.primary,
+  surfaceSecondary: keepsyColors.surface.secondary,
+  surfaceMuted: keepsyColors.surface.muted,
+  surfaceGlass: keepsyColors.surface.secondary,
+  text: keepsyColors.text.primary,
+  textSecondary: keepsyColors.text.secondary,
+  textMuted: keepsyColors.text.muted,
+  border: keepsyColors.border.subtle,
+  borderMuted: keepsyColors.border.default,
+  glassBorder: keepsyColors.border.default,
+  pastelPink: keepsyColors.pastel.pink,
+  pastelLavender: keepsyColors.pastel.lavender,
+  pastelMint: keepsyColors.pastel.mint,
+  pastelPeach: keepsyColors.pastel.peach,
+  pastelBlue: keepsyColors.pastel.blue,
+  success: keepsyColors.semantic.success,
+  error: keepsyColors.semantic.error,
+  warning: keepsyColors.semantic.warning,
+};
 
 export const darkColors: ThemeColors = {
-  ...lightColors,
-  primary: '#A78BFA',
-  primaryMuted: '#7C3AED',
-  background: '#111827',
-  surface: '#1F2937',
-  surfaceMuted: '#374151',
-  text: '#F9FAFB',
-  textSecondary: '#D1D5DB',
-  textMuted: '#9CA3AF',
-  border: '#374151',
-  borderMuted: '#4B5563',
-  pastelPink: '#831843',
-  pastelLavender: '#4C1D95',
-  pastelMint: '#064E3B',
-  pastelPeach: '#9A3412',
-  pastelBlue: '#1E3A8A',
+  primary: keepsyColorsDark.brand.primary,
+  primaryMuted: keepsyColorsDark.brand.primaryMuted,
+  accent: keepsyColorsDark.brand.accent,
+  highlight: keepsyColorsDark.brand.highlight,
+  sun: keepsyColorsDark.brand.sun,
+  background: keepsyColorsDark.background.primary,
+  backgroundSecondary: keepsyColorsDark.background.secondary,
+  backgroundTertiary: keepsyColorsDark.background.tertiary,
+  backgroundWash: keepsyColorsDark.background.wash,
+  surface: keepsyColorsDark.surface.primary,
+  surfaceSecondary: keepsyColorsDark.surface.secondary,
+  surfaceMuted: keepsyColorsDark.surface.muted,
+  surfaceGlass: keepsyColorsDark.surface.secondary,
+  text: keepsyColorsDark.text.primary,
+  textSecondary: keepsyColorsDark.text.secondary,
+  textMuted: keepsyColorsDark.text.muted,
+  border: keepsyColorsDark.border.subtle,
+  borderMuted: keepsyColorsDark.border.default,
+  glassBorder: keepsyColorsDark.border.default,
+  pastelPink: keepsyColorsDark.pastel.pink,
+  pastelLavender: keepsyColorsDark.pastel.lavender,
+  pastelMint: keepsyColorsDark.pastel.mint,
+  pastelPeach: keepsyColorsDark.pastel.peach,
+  pastelBlue: keepsyColorsDark.pastel.blue,
+  success: keepsyColorsDark.semantic.success,
+  error: keepsyColorsDark.semantic.error,
+  warning: keepsyColorsDark.semantic.warning,
 };
 
 export type Theme = {

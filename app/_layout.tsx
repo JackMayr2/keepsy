@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
 import { Redirect, Stack, useSegments } from 'expo-router';
@@ -66,6 +67,7 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    ...MaterialIcons.font,
   });
 
   useEffect(() => {

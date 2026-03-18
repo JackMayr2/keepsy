@@ -17,15 +17,20 @@ export function DSInput({ label, error, ...rest }: DSInputProps) {
       ) : null}
       <TamaguiInput
         size="$4"
-        borderRadius="$3"
+        minHeight={56}
+        paddingHorizontal="$4"
+        paddingVertical="$3"
+        borderRadius={18}
         borderWidth={1.5}
-        backgroundColor="$background"
-        borderColor={error ? '$red10' : '$borderColor'}
-        placeholderTextColor="$colorHover"
+        backgroundColor="rgba(255,255,255,0.68)"
+        borderColor={error ? '$red10' : 'rgba(102, 92, 165, 0.22)'}
+        placeholderTextColor="$placeholderColor"
+        fontSize={16}
+        textAlignVertical="center"
         {...rest}
       />
       {error ? (
-        <DSText variant="caption" color="muted" style={{ color: 'var(--red10)' }}>
+        <DSText variant="caption" style={{ color: 'var(--red10)' }}>
           {error}
         </DSText>
       ) : null}

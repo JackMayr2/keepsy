@@ -43,6 +43,20 @@ export function DSText({
       fontSize={variantToSize[variant]}
       fontWeight={variantToWeight[variant]}
       color={colorMap[color]}
+      letterSpacing={variant === 'titleLarge' ? -0.9 : variant === 'title' ? -0.4 : 0}
+      lineHeight={
+        variant === 'titleLarge'
+          ? 36
+          : variant === 'title'
+            ? 28
+            : variant === 'body'
+              ? 24
+              : variant === 'bodySmall'
+                ? 20
+                : variant === 'caption'
+                  ? 16
+                  : 18
+      }
       {...rest}
     >
       {children}

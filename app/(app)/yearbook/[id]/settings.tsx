@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbook } from '@/src/hooks/useYearbook';
 import { updateYearbook } from '@/src/services/firestore';
+import { DSIcon } from '@/src/design-system';
 import { Container, Text, Button, Input } from '@/src/components/ui';
 
 export default function YearbookSettingsScreen() {
@@ -61,7 +62,13 @@ export default function YearbookSettingsScreen() {
         onChangeText={setDueDate}
         placeholder="e.g. May 15, 2025"
       />
-      <Button title="Save changes" onPress={handleSave} loading={saving} style={styles.saveBtn} />
+      <Button
+        title="Save changes"
+        onPress={handleSave}
+        loading={saving}
+        icon={<DSIcon name={{ ios: 'checkmark.circle.fill', android: 'task_alt', web: 'check_circle' }} size={16} color="#FFFFFF" />}
+        style={styles.saveBtn}
+      />
       <Text variant="body" color="secondary" style={styles.hint}>
         Invite code: {yearbook.inviteCode}
       </Text>

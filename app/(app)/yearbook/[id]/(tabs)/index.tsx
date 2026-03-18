@@ -8,25 +8,43 @@ import {
   Image,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter, useNavigation } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
+import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { getYearbookMembers, getUser } from '@/src/services/firestore';
 import { Container, Text } from '@/src/components/ui';
+import { DSIcon, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { YearbookMember } from '@/src/types/yearbook.types';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
+
+const LIST_PADDING_BASE = 24;
 
 type MemberWithUser = YearbookMember & { user: User | null };
 
 export default function MembersTab() {
   const id = useYearbookId();
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { userId: currentUserId } = useAuth();
   const { theme } = useTheme();
+  const { navVisible, setNavVisible } = useYearbookNav();
+  const { onScroll, scrollEventThrottle } = useScrollToHideNav();
+  const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
   const [members, setMembers] = useState<MemberWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    setNavVisible(true);
+    return () => setNavVisible(true);
+  }, [setNavVisible]);
+  useEffect(() => {
+    navigation.getParent()?.setOptions({ headerShown: navVisible });
+  }, [navigation, navVisible]);
 
   const load = async () => {
     if (!id) return;
@@ -77,7 +95,10 @@ export default function MembersTab() {
       <FlatList
         data={members}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
+        {...standardFlatListScrollProps}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -113,9 +134,13 @@ export default function MembersTab() {
                   {item.role}
                 </Text>
               </View>
-              <Text variant="caption" color="secondary">
-                View profile
-              </Text>
+              <View style={styles.rowAccessory}>
+                <DSIcon
+                  name={{ ios: 'chevron.right', android: 'arrow_forward_ios', web: 'arrow_forward_ios' }}
+                  size={16}
+                  color={theme.colors.textMuted}
+                />
+              </View>
             </Pressable>
           );
         }}
@@ -127,7 +152,7 @@ export default function MembersTab() {
 const styles = StyleSheet.create({
   loader: { marginTop: 24 },
   empty: { marginTop: 24, textAlign: 'center' },
-  list: { paddingBottom: 24 },
+  list: {},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -146,4 +171,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowContent: { flex: 1, minWidth: 0, marginRight: 8 },
+  rowAccessory: {
+    width: 24,
+    alignItems: 'flex-end',
+  },
 });

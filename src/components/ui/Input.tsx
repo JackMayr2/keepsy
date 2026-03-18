@@ -36,18 +36,22 @@ export function Input({
         style={[
           styles.input,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.surfaceGlass,
             borderColor: error ? colors.error : colors.border,
             borderRadius: radii.lg,
             paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm + 4,
+            paddingVertical: spacing.sm + 6,
+            minHeight: 56,
             fontSize: theme.typography.fontSize.base,
             color: colors.text,
             borderWidth: 1.5,
+            textAlignVertical: 'center',
+            includeFontPadding: false,
           },
           style,
         ]}
         placeholderTextColor={colors.textMuted}
+        selectionColor={colors.primary}
         {...props}
       />
       {error ? (

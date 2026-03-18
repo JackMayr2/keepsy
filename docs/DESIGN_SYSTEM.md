@@ -1,10 +1,18 @@
-# Keepsy Design System – Audit & Plan
+# Keepsy Design System
 
-**Stack:** Tamagui (primary), React Native Reanimated (motion), Expo Haptics (feedback). NativeWind is optional and can be added later for layout utilities; Tamagui tokens cover spacing/layout for now.
+**Stack:** Tamagui (primary), React Native Reanimated (motion), Expo Haptics (feedback). Partiful-inspired: playful, premium, social, soft, pastel-forward.
 
 ---
 
-## 1. Current Styling Audit
+## Token source of truth
+
+- **`src/design-system/theme/keepsy-tokens.ts`** — Semantic color palette (background, surface, text, brand, border, semantic, pastel), spacing, size, radius, typography, shadows. Light and dark palettes.
+- **`src/design-system/theme/tamagui.config.ts`** — Tamagui config: extends default config and injects **light** and **dark** themes built from `keepsy-tokens`, so `$background`, `$color`, `$borderColor`, etc. resolve to Keepsy colors.
+- **`src/theme/light.ts`** and **`src/theme/tokens.ts`** — Legacy theme consumed by `useTheme()`; they import from `keepsy-tokens` so one source drives both Tamagui and legacy UI.
+
+---
+
+## 1. Styling Audit (reference)
 
 ### Issues
 
@@ -73,7 +81,7 @@ After editing tokens/config, run the app and optionally Tamagui compiler if enab
 ## 4. Implemented Pieces
 
 - **`src/design-system/theme/tamagui.config.ts`** – Tamagui config (extends `@tamagui/config`). Edit here to add custom tokens or themes.
-- **`src/design-system/components/`** – Page, Header, DSButton, DSText, DSCard, DSInput, DSTag, ListRow. All use Tamagui tokens (`$color`, `$background`, `$4`, etc.).
+- **`src/design-system/components/`** – Page, Header, DSButton, DSText, DSCard, DSInput, DSTag, ListRow, **EmptyState**, **Skeleton** / **SkeletonBlock**. All use Tamagui tokens (`$color`, `$background`, etc.). Cards use soft elevation; buttons use Reanimated press scale + haptics; inputs are spacious with 14px radius.
 - **`src/design-system/hooks/useHaptic.ts`** – Central haptic helpers; used in DSButton and ListRow.
 - **`app/(app)/(tabs)/index.tsx`** – Refactored to use Page, Header, DSButton, DSText and Tamagui layout (YStack, XStack).
 - **Root layout** – Wraps app with `TamaguiProvider`; `defaultTheme` is driven by existing `ThemeProvider` (light/dark).

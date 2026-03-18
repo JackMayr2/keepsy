@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="104" y1="72" x2="924" y2="952" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6962FF"/>
+      <stop offset="48%" stop-color="#B66BFF"/>
+      <stop offset="100%" stop-color="#FF7AB4"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(278 796) rotate(6.84) scale(330 244)">
+      <stop offset="0%" stop-color="#7FE4FF" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#7FE4FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <ellipse cx="354" cy="188" rx="318" ry="140" fill="#FFFFFF" fill-opacity="0.16"/>
+  <circle cx="278" cy="796" r="248" fill="url(#glow)"/>
+</svg>

@@ -8,8 +8,11 @@ import {
   FlatList,
   Image,
 } from 'react-native';
+import { useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
+import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import {
   getSuperlatives,
   getYearbookMembers,
@@ -19,9 +22,12 @@ import {
 } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
 import { Container, Text, Button } from '@/src/components/ui';
+import { DSIcon, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { YearbookMember } from '@/src/types/yearbook.types';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
+
+const LIST_PADDING_BASE = 24;
 
 type SuperlativeWithNominations = {
   id: string;
@@ -33,13 +39,26 @@ type MemberWithUser = YearbookMember & { user: User | null };
 
 export default function SuperlativesTab() {
   const id = useYearbookId();
+  const navigation = useNavigation();
   const { userId } = useAuth();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { navVisible, setNavVisible } = useYearbookNav();
+  const { onScroll, scrollEventThrottle } = useScrollToHideNav();
+  const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
   const [superlatives, setSuperlatives] = useState<SuperlativeWithNominations[]>([]);
   const [members, setMembers] = useState<MemberWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [nominating, setNominating] = useState(false);
   const [selectedSuperlative, setSelectedSuperlative] = useState<SuperlativeWithNominations | null>(null);
+
+  useEffect(() => {
+    setNavVisible(true);
+    return () => setNavVisible(true);
+  }, [setNavVisible]);
+  useEffect(() => {
+    navigation.getParent()?.setOptions({ headerShown: navVisible });
+  }, [navigation, navVisible]);
 
   const load = async () => {
     if (!id) {
@@ -117,43 +136,54 @@ export default function SuperlativesTab() {
 
   return (
     <Container>
-      {superlatives.map((s) => {
-        const myNominatedId = userId ? s.nominations[userId] : undefined;
-        const nominatedMember = myNominatedId
-          ? members.find((m) => m.userId === myNominatedId)
-          : null;
-        const nominatedName = nominatedMember ? getMemberName(nominatedMember) : null;
+      <FlatList
+        data={superlatives}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
+        {...standardFlatListScrollProps}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        renderItem={({ item: s }) => {
+          const myNominatedId = userId ? s.nominations[userId] : undefined;
+          const nominatedMember = myNominatedId
+            ? members.find((m) => m.userId === myNominatedId)
+            : null;
+          const nominatedName = nominatedMember ? getMemberName(nominatedMember) : null;
 
-        return (
-          <View
-            key={s.id}
-            style={[styles.row, { borderBottomColor: theme.colors.borderMuted }]}
-          >
-            <Text variant="body" style={styles.category}>
-              {s.category}
-            </Text>
-            {nominatedName ? (
-              <Text variant="caption" color="secondary">
-                You nominated: {nominatedName}
+          return (
+            <View
+              style={[styles.row, { borderBottomColor: theme.colors.borderMuted }]}
+            >
+              <Text variant="body" style={styles.category}>
+                {s.category}
               </Text>
-            ) : (
-              <Button
-                title="Nominate"
-                variant="outline"
-                onPress={() => setSelectedSuperlative(s)}
-                style={styles.nominateBtn}
-              />
-            )}
-          </View>
-        );
-      })}
+              {nominatedName ? (
+                <Text variant="caption" color="secondary">
+                  You nominated: {nominatedName}
+                </Text>
+              ) : (
+                <Button
+                  title="Nominate"
+                  variant="outline"
+                  onPress={() => setSelectedSuperlative(s)}
+                  icon={<DSIcon name={{ ios: 'star.circle', android: 'stars', web: 'stars' }} size={16} color={theme.colors.text} />}
+                  style={styles.nominateBtn}
+                />
+              )}
+            </View>
+          );
+        }}
+      />
 
       <Modal visible={!!selectedSuperlative} animationType="slide" transparent>
         <Pressable
           style={styles.modalOverlay}
           onPress={() => setSelectedSuperlative(null)}
         >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <Text variant="title" style={styles.modalTitle}>
               {selectedSuperlative?.category}
             </Text>
@@ -164,6 +194,7 @@ export default function SuperlativesTab() {
               data={members.filter((m) => m.userId !== userId)}
               keyExtractor={(m) => m.id}
               style={styles.memberList}
+              {...standardFlatListScrollProps}
               renderItem={({ item }) => (
                 <Pressable
                   style={({ pressed }) => [
@@ -209,6 +240,7 @@ export default function SuperlativesTab() {
 }
 
 const styles = StyleSheet.create({
+  list: {},
   loader: { marginTop: 24 },
   row: {
     paddingVertical: 16,
@@ -223,7 +255,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,

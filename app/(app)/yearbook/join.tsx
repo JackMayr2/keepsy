@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { joinYearbookByCode } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
+import { BrandLogo, DSIcon } from '@/src/design-system';
 import { Container, Button, Input, Text } from '@/src/components/ui';
 
 export default function JoinYearbookScreen() {
   const { userId, pendingJoinCode, setPendingJoinCode } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ code?: string }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +43,8 @@ export default function JoinYearbookScreen() {
   };
 
   return (
-    <Container style={styles.content}>
+    <Container style={[styles.content, { paddingBottom: insets.bottom }]}>
+      <BrandLogo size="sm" tagline="step into the circle" />
       <Text variant="titleLarge" style={styles.title}>
         Join yearbook
       </Text>
@@ -60,6 +64,7 @@ export default function JoinYearbookScreen() {
         onPress={handleJoin}
         disabled={code.length !== 8}
         loading={loading}
+        icon={<DSIcon name={{ ios: 'person.badge.plus', android: 'group_add', web: 'person_add' }} size={16} color="#FFFFFF" />}
         style={styles.button}
       />
     </Container>
@@ -67,7 +72,7 @@ export default function JoinYearbookScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 24, paddingTop: 24 },
+  content: { paddingHorizontal: 24 },
   title: { marginBottom: 8 },
   subtitle: { marginBottom: 24 },
   input: { marginBottom: 24 },

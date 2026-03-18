@@ -1,0 +1,27 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="112" y1="84" x2="916" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6962FF"/>
+      <stop offset="52%" stop-color="#B66BFF"/>
+      <stop offset="100%" stop-color="#FF7AB4"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="212" y1="128" x2="796" y2="524" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(248 804) rotate(11.24) scale(312 278)">
+      <stop offset="0%" stop-color="#7FE4FF" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#7FE4FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="260" fill="url(#bg)"/>
+  <ellipse cx="352" cy="202" rx="304" ry="144" fill="url(#mist)"/>
+  <circle cx="248" cy="804" r="248" fill="url(#glow)"/>
+  <rect x="216" y="216" width="592" height="592" rx="196" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="8"/>
+  <rect x="374" y="252" width="86" height="520" rx="43" fill="#FFFFFF"/>
+  <rect x="458" y="306" width="260" height="82" rx="41" transform="rotate(-39.5 458 306)" fill="#FFFFFF"/>
+  <rect x="452" y="544" width="272" height="82" rx="41" transform="rotate(39.5 452 544)" fill="#FFFFFF"/>
+  <circle cx="668" cy="292" r="56" fill="#FFD96E"/>
+  <circle cx="668" cy="292" r="24" fill="#FFF3BF" fill-opacity="0.72"/>
+</svg>

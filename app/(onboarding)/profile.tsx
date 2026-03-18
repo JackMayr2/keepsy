@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { YStack } from 'tamagui';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useTheme } from '@/src/contexts/ThemeContext';
 import { updateUser } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
-import { Container, Button, Input, Text } from '@/src/components/ui';
+import { BrandLogo, Page, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
 
 export default function ProfileOnboardingScreen() {
   const { userId, refreshAuthState } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,30 +34,36 @@ export default function ProfileOnboardingScreen() {
   };
 
   return (
-    <Container scroll style={styles.content}>
-      <Text variant="titleLarge" style={styles.title}>
+    <Page scroll paddingTop={48} paddingHorizontal={24}>
+      <BrandLogo size="sm" tagline="make it feel like you" />
+      <DSText variant="titleLarge" marginBottom="$2">
         Complete your profile
-      </Text>
-      <Text variant="body" color="secondary" style={styles.subtitle}>
+      </DSText>
+      <DSText variant="body" color="secondary" marginBottom="$6" lineHeight={22}>
         Optional — you can add more later in settings
-      </Text>
-      <Input
+      </DSText>
+      <DSInput
         label="Bio"
         value={bio}
         onChangeText={setBio}
         placeholder="A few words about you"
         multiline
+        marginBottom="$6"
       />
-      <Button title="Save" onPress={handleSave} loading={loading} style={styles.button} />
-      <Button title="Skip for now" variant="ghost" onPress={handleSkip} style={styles.skip} />
-    </Container>
+      <YStack gap="$3">
+        <DSButton
+          title="Save"
+          onPress={handleSave}
+          loading={loading}
+          icon={<DSIcon name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={16} color="#FFFFFF" />}
+        />
+        <DSButton
+          title="Skip"
+          variant="ghost"
+          onPress={handleSkip}
+          icon={<DSIcon name={{ ios: 'forward.fill', android: 'fast_forward', web: 'fast_forward' }} size={16} color={theme.colors.text} />}
+        />
+      </YStack>
+    </Page>
   );
 }
-
-const styles = StyleSheet.create({
-  content: { paddingHorizontal: 24, paddingTop: 48 },
-  title: { marginBottom: 8 },
-  subtitle: { marginBottom: 24 },
-  button: { marginTop: 24 },
-  skip: { marginTop: 12 },
-});

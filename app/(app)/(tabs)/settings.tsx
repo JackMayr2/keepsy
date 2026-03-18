@@ -9,12 +9,12 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { getUser } from '@/src/services/firestore';
+import { DSIcon } from '@/src/design-system';
 import { Container, Text, Button } from '@/src/components/ui';
 
 function SettingsRow({
@@ -22,18 +22,23 @@ function SettingsRow({
   value,
   onPress,
   showChevron = true,
+  icon,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
   showChevron?: boolean;
+  icon?: React.ReactNode;
 }) {
   const { theme } = useTheme();
   const content = (
     <View style={styles.row}>
-      <Text variant="body" style={styles.rowLabel} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.rowLeft}>
+        {icon ? <View style={styles.rowIcon}>{icon}</View> : null}
+        <Text variant="body" style={styles.rowLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
       <View style={styles.rowRight}>
         {value != null && value !== '' ? (
           <Text variant="body" color="secondary" numberOfLines={1} style={styles.rowValue}>
@@ -41,10 +46,10 @@ function SettingsRow({
           </Text>
         ) : null}
         {showChevron && onPress ? (
-          <SymbolView
+          <DSIcon
             name={{ ios: 'chevron.right', android: 'arrow_forward', web: 'arrow_forward' }}
             size={16}
-            style={{ tintColor: theme.colors.textMuted, marginLeft: 6 }}
+            color={theme.colors.textMuted}
           />
         ) : null}
       </View>
@@ -170,10 +175,10 @@ export default function SettingsScreen() {
                   </Text>
                 ) : null}
               </View>
-              <SymbolView
+              <DSIcon
                 name={{ ios: 'chevron.right', android: 'arrow_forward', web: 'arrow_forward' }}
                 size={16}
-                style={{ tintColor: theme.colors.textMuted, marginLeft: 6 }}
+                color={theme.colors.textMuted}
               />
             </Pressable>
             {userEmail ? (
@@ -207,9 +212,21 @@ export default function SettingsScreen() {
 
       <SectionHeader title="ABOUT" />
       <View style={[styles.section, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
-        <SettingsRow label="Help" onPress={handleHelp} />
-        <SettingsRow label="Privacy policy" onPress={handlePrivacy} />
-        <SettingsRow label="Terms of service" onPress={handleTerms} />
+        <SettingsRow
+          label="Help"
+          onPress={handleHelp}
+          icon={<DSIcon name={{ ios: 'questionmark.circle.fill', android: 'help', web: 'help' }} size={16} color={theme.colors.text} />}
+        />
+        <SettingsRow
+          label="Privacy policy"
+          onPress={handlePrivacy}
+          icon={<DSIcon name={{ ios: 'lock.shield.fill', android: 'privacy_tip', web: 'verified_user' }} size={16} color={theme.colors.text} />}
+        />
+        <SettingsRow
+          label="Terms of service"
+          onPress={handleTerms}
+          icon={<DSIcon name={{ ios: 'doc.text.fill', android: 'description', web: 'description' }} size={16} color={theme.colors.text} />}
+        />
         <View style={[styles.rowWrap, styles.rowBorder, { borderTopColor: theme.colors.borderMuted }]}>
           <Text variant="body" color="secondary" style={styles.rowLabel}>
             Version
@@ -221,7 +238,13 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.signOutWrap}>
-        <Button title="Sign out" variant="outline" onPress={handleSignOut} style={styles.signOut} />
+        <Button
+          title="Sign out"
+          variant="outline"
+          onPress={handleSignOut}
+          icon={<DSIcon name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={16} color={theme.colors.text} />}
+          style={styles.signOut}
+        />
       </View>
     </Container>
   );
@@ -250,6 +273,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 },
+  rowIcon: { marginRight: 10 },
   rowLabel: { flex: 1, marginRight: 12 },
   rowRight: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, maxWidth: '60%' },
   rowValue: { textAlign: 'right', marginRight: 2 },

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { YStack } from 'tamagui';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { createUser } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
-import { Container, Button, Input, Text } from '@/src/components/ui';
+import { BrandLogo, Page, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
 
 export default function WelcomeScreen() {
   const { userId } = useAuth();
@@ -37,53 +38,48 @@ export default function WelcomeScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.flex}
+      style={{ flex: 1 }}
     >
-      <Container scroll style={styles.content}>
-        <Text variant="titleLarge" style={styles.title}>
+      <Page scroll paddingTop={52} paddingHorizontal={28}>
+        <BrandLogo size="sm" tagline="start your chapter" />
+        <DSText variant="titleLarge" marginBottom="$2" letterSpacing={-0.4}>
           Welcome to Keepsy
-        </Text>
-        <Text variant="body" color="secondary" style={styles.subtitle}>
+        </DSText>
+        <DSText variant="body" color="secondary" marginBottom="$6" lineHeight={22}>
           Tell us a bit about you
-        </Text>
-        <Input
-          label="First name"
-          value={firstName}
-          onChangeText={setFirstName}
-          placeholder="First name"
-          autoCapitalize="words"
-        />
-        <Input
-          label="Last name"
-          value={lastName}
-          onChangeText={setLastName}
-          placeholder="Last name"
-          autoCapitalize="words"
-        />
-        <Input
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Button
+        </DSText>
+        <YStack gap="$4" marginBottom="$6">
+          <DSInput
+            label="First name"
+            value={firstName}
+            onChangeText={setFirstName}
+            placeholder="First name"
+            autoCapitalize="words"
+          />
+          <DSInput
+            label="Last name"
+            value={lastName}
+            onChangeText={setLastName}
+            placeholder="Last name"
+            autoCapitalize="words"
+          />
+          <DSInput
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </YStack>
+        <DSButton
           title="Continue"
           onPress={handleContinue}
           disabled={!valid}
           loading={loading}
-          style={styles.button}
+          icon={<DSIcon name={{ ios: 'arrow.right.circle.fill', android: 'arrow_forward', web: 'arrow_forward' }} size={16} color="#FFFFFF" />}
         />
-      </Container>
+      </Page>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { paddingHorizontal: 28, paddingTop: 52 },
-  title: { marginBottom: 10, letterSpacing: -0.3 },
-  subtitle: { marginBottom: 28, lineHeight: 22 },
-  button: { marginTop: 28 },
-});

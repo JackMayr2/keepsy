@@ -1,0 +1,23 @@
+<svg width="1240" height="420" viewBox="0 0 1240 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mark" x1="48" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6962FF"/>
+      <stop offset="52%" stop-color="#B66BFF"/>
+      <stop offset="100%" stop-color="#FF7AB4"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="40" y="40" width="204" height="204" rx="68" fill="url(#mark)"/>
+  <rect x="92" y="60" width="100" height="62" rx="31" fill="#FFFFFF" fill-opacity="0.12"/>
+  <rect x="104" y="74" width="30" height="136" rx="15" fill="#FFFFFF"/>
+  <rect x="134" y="88" width="74" height="28" rx="14" transform="rotate(-39.5 134 88)" fill="#FFFFFF"/>
+  <rect x="132" y="150" width="78" height="28" rx="14" transform="rotate(39.5 132 150)" fill="#FFFFFF"/>
+  <circle cx="190" cy="86" r="18" fill="#FFD96E"/>
+
+  <text x="292" y="152" fill="#16142E" font-family="Avenir Next, SF Pro Display, Inter, Arial, sans-serif" font-size="132" font-weight="800" letter-spacing="-6">
+    Keepsy
+  </text>
+  <text x="296" y="216" fill="#76719E" font-family="Avenir Next, SF Pro Display, Inter, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="3">
+    KEEP THE MEMORIES GOING
+  </text>
+</svg>

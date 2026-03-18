@@ -5,6 +5,7 @@ import { verifyCode } from '@/src/services/auth';
 import { logger } from '@/src/utils/logger';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { AnimatedBlobBackground } from '@/src/components/AnimatedBlobBackground';
+import { BrandLogo, DSIcon } from '@/src/design-system';
 import { Container, Button, Text } from '@/src/components/ui';
 
 const CODE_LENGTH = 6;
@@ -56,6 +57,7 @@ export default function VerifyScreen() {
         style={styles.flex}
       >
         <Container style={styles.content}>
+          <BrandLogo size="sm" tagline="verify your invite" />
           <Text variant="titleLarge" style={styles.title}>
             Enter the code
           </Text>
@@ -82,6 +84,7 @@ export default function VerifyScreen() {
             onPress={handleVerify}
             loading={loading}
             disabled={code.length !== CODE_LENGTH}
+            icon={<DSIcon name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'check_circle' }} size={16} color="#FFFFFF" />}
             style={styles.button}
           />
         </Container>

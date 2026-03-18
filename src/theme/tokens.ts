@@ -1,68 +1,52 @@
 /**
- * Design tokens: spacing, radii, typography, shadows.
- * Partiful-inspired: generous spacing, soft radii, refined shadows.
+ * Design tokens — re-exported from design-system for legacy useTheme() consumers.
+ * Single source: design-system/theme/keepsy-tokens.ts
  */
+import { keepsySpace, keepsyRadius, keepsyFontSize, keepsyFontWeight, keepsyLineHeight, keepsyShadows } from '@/src/design-system/theme/keepsy-tokens';
+
 export const spacing = {
-  xs: 6,
-  sm: 12,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
+  xs: keepsySpace[2],
+  sm: keepsySpace[3],
+  md: keepsySpace[4],
+  lg: keepsySpace[6],
+  xl: keepsySpace[7],
+  xxl: keepsySpace[9],
 } as const;
 
 export const radii = {
-  sm: 10,
-  md: 14,
-  lg: 20,
-  xl: 28,
-  pill: 9999,
-  full: 9999,
+  sm: keepsyRadius[2],
+  md: keepsyRadius[3],
+  lg: keepsyRadius[5],
+  xl: keepsyRadius[6],
+  pill: keepsyRadius.pill,
+  full: keepsyRadius.full,
 } as const;
 
 export const typography = {
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    '2xl': 26,
-    '3xl': 32,
+    xs: keepsyFontSize[2],
+    sm: keepsyFontSize[3],
+    base: keepsyFontSize[4],
+    lg: keepsyFontSize[5],
+    xl: keepsyFontSize[6],
+    '2xl': keepsyFontSize[8],
+    '3xl': keepsyFontSize[9],
   },
   fontWeight: {
-    normal: '400' as const,
-    medium: '500' as const,
-    semibold: '600' as const,
-    bold: '700' as const,
+    normal: keepsyFontWeight[2] as '400',
+    medium: keepsyFontWeight[3] as '500',
+    semibold: keepsyFontWeight[4] as '600',
+    bold: keepsyFontWeight[5] as '700',
   },
   lineHeight: {
-    tight: 1.25,
-    normal: 1.5,
-    relaxed: 1.6,
+    tight: keepsyLineHeight[1],
+    normal: keepsyLineHeight[3],
+    relaxed: keepsyLineHeight[4],
   },
 } as const;
 
 export const shadows = {
-  sm: {
-    shadowColor: '#1F2937',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#1F2937',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: '#1F2937',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 8,
-  },
+  sm: keepsyShadows.sm,
+  md: keepsyShadows.md,
+  lg: keepsyShadows.lg,
 } as const;

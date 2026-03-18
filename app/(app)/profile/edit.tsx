@@ -13,6 +13,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { getUser, updateUser } from '@/src/services/firestore';
 import { uploadProfileImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
+import { DSIcon } from '@/src/design-system';
 import { Container, Button, Input, Text } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
@@ -205,7 +206,13 @@ export default function EditProfileScreen() {
         />
       ))}
 
-      <Button title="Save changes" onPress={handleSave} loading={loading} style={styles.button} />
+      <Button
+        title="Save changes"
+        onPress={handleSave}
+        loading={loading}
+        icon={<DSIcon name={{ ios: 'checkmark.circle.fill', android: 'task_alt', web: 'check_circle' }} size={16} color="#FFFFFF" />}
+        style={styles.button}
+      />
     </Container>
   );
 }

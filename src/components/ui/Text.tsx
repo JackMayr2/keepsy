@@ -26,17 +26,18 @@ export function Text({
   };
 
   const variantStyles: Record<TextVariant, object> = {
-    body: { fontSize: typo.fontSize.base, fontWeight: typo.fontWeight.normal },
-    bodySmall: { fontSize: typo.fontSize.sm, fontWeight: typo.fontWeight.normal },
-    title: { fontSize: typo.fontSize.xl, fontWeight: typo.fontWeight.semibold },
-    titleLarge: { fontSize: typo.fontSize['2xl'], fontWeight: typo.fontWeight.bold },
-    caption: { fontSize: typo.fontSize.xs, fontWeight: typo.fontWeight.normal },
-    label: { fontSize: typo.fontSize.sm, fontWeight: typo.fontWeight.medium },
+    body: { fontSize: typo.fontSize.base, lineHeight: 24, fontWeight: typo.fontWeight.normal },
+    bodySmall: { fontSize: typo.fontSize.sm, lineHeight: 20, fontWeight: typo.fontWeight.normal },
+    title: { fontSize: typo.fontSize.xl, lineHeight: 28, fontWeight: typo.fontWeight.semibold, letterSpacing: -0.4 },
+    titleLarge: { fontSize: typo.fontSize['2xl'], lineHeight: 36, fontWeight: typo.fontWeight.bold, letterSpacing: -0.9 },
+    caption: { fontSize: typo.fontSize.xs, lineHeight: 16, fontWeight: typo.fontWeight.normal },
+    label: { fontSize: typo.fontSize.sm, lineHeight: 18, fontWeight: typo.fontWeight.medium, letterSpacing: 0.2 },
   };
 
   return (
     <RNText
       style={[
+        styles.base,
         variantStyles[variant],
         { color: colorMap[color] },
         style,
@@ -45,3 +46,10 @@ export function Text({
     />
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+});

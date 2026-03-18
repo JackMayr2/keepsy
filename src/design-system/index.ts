@@ -1,5 +1,5 @@
 export { config } from './theme/tamagui.config';
-export type { Conf } from './theme/tamagui.config';
+export type { Conf } from './theme/tamagui-config';
 
 export { Page } from './components/Page';
 export { Header } from './components/Header';
@@ -7,6 +7,8 @@ export { DSButton } from './components/DSButton';
 export type { ButtonVariant, DSButtonProps } from './components/DSButton';
 export { DSText } from './components/DSText';
 export type { DSTextVariant, DSTextProps } from './components/DSText';
+export { DSIcon } from './components/DSIcon';
+export type { DSIconName } from './components/DSIcon';
 export { DSCard } from './components/DSCard';
 export type { DSCardProps } from './components/DSCard';
 export { DSInput } from './components/DSInput';
@@ -15,5 +17,18 @@ export { DSTag } from './components/DSTag';
 export type { DSTagProps } from './components/DSTag';
 export { ListRow } from './components/ListRow';
 export type { ListRowProps } from './components/ListRow';
+export { EmptyState } from './components/EmptyState';
+export type { EmptyStateProps } from './components/EmptyState';
+export { Skeleton, SkeletonBlock } from './components/Skeleton';
+export { GlassBar } from './components/GlassBar';
+export { NavFadeBar } from './components/NavFadeBar';
+export { NavIconButton } from './components/NavIconButton';
+export { SafeAreaTabBar } from './components/SafeAreaTabBar';
+export { BrandBackground } from './components/BrandBackground';
+export type { BrandBackgroundPreset } from './components/BrandBackground';
+export { BrandLogo } from './components/BrandLogo';
+export { FloatingKeepsyIcon } from './components/FloatingKeepsyIcon';
+export { standardScrollViewProps, standardFlatListScrollProps } from './constants/scroll';
+export { TAB_BAR_CONTENT_HEIGHT, TAB_BAR_PADDING_TOP } from './constants/tabBar';
 
 export { useHaptic } from './hooks/useHaptic';
