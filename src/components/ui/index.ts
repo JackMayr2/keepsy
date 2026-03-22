@@ -12,3 +12,5 @@ export { PlaceAutocomplete } from './PlaceAutocomplete';
 export type { PlaceAutocompleteProps, ResolvedPlace } from './PlaceAutocomplete';
 export { DatePickerField } from './DatePickerField';
 export type { DatePickerFieldProps } from './DatePickerField';
+export { SocialPlatformIcon } from './SocialPlatformIcon';
+export type { SocialPlatformKey } from './SocialPlatformIcon';

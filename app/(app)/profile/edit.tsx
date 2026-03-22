@@ -16,7 +16,15 @@ import { generateProfileAvatarOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
-import { Container, Button, Input, Text, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
+import {
+  Container,
+  Button,
+  Input,
+  Text,
+  PlaceAutocomplete,
+  SocialPlatformIcon,
+  type ResolvedPlace,
+} from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 const SOCIAL_KEYS = [
@@ -313,6 +321,7 @@ export default function EditProfileScreen() {
         <Input
           key={key}
           label={label}
+          leftIcon={<SocialPlatformIcon platform={key} size={22} />}
           value={socialLinks[key] ?? ''}
           onChangeText={(text) => setSocialLinks((prev) => ({ ...prev, [key]: text }))}
           placeholder={placeholder}

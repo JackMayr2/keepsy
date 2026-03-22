@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, ActivityIndicator, Linking } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  Linking,
+  Pressable,
+} from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { getUser } from '@/src/services/firestore';
-import { Container, Text } from '@/src/components/ui';
+import { Container, Text, SocialPlatformIcon } from '@/src/components/ui';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { resolveSocialUrl, socialLinkDisplayText } from '@/src/utils/socialLinks';
 
 const SOCIAL_LABELS: Record<string, string> = {
   instagram: 'Instagram',
@@ -77,21 +85,42 @@ export default function MemberProfileScreen() {
           <Text variant="label" color="secondary" style={styles.sectionTitle}>
             Connect
           </Text>
-          {Object.entries(socialLinks).map(([key, value]) => {
-            if (!value?.trim()) return null;
-            const label = SOCIAL_LABELS[key] ?? key;
-            const url = value.startsWith('http') ? value : `https://${key}.com/${value.replace(/^@/, '')}`;
-            return (
-              <Text
-                key={key}
-                variant="body"
-                style={styles.socialLink}
-                onPress={() => Linking.openURL(url)}
-              >
-                {label}: {value}
-              </Text>
-            );
-          })}
+          <View style={styles.socialRow}>
+            {Object.entries(socialLinks).map(([key, value]) => {
+              if (!value?.trim()) return null;
+              const url = resolveSocialUrl(key, value);
+              const display = socialLinkDisplayText(key, value);
+              const a11y = `${SOCIAL_LABELS[key] ?? key}, ${display}`;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="link"
+                  accessibilityLabel={a11y}
+                  onPress={() => url && Linking.openURL(url)}
+                  style={({ pressed }) => [
+                    styles.socialChip,
+                    {
+                      backgroundColor: theme.colors.surfaceGlass,
+                      borderColor: theme.colors.border,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.socialIconCircle,
+                      { backgroundColor: theme.colors.borderMuted },
+                    ]}
+                  >
+                    <SocialPlatformIcon platform={key} size={24} />
+                  </View>
+                  <Text variant="caption" color="secondary" numberOfLines={1} style={styles.socialChipLabel}>
+                    {display}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       ) : null}
     </Container>
@@ -115,5 +144,30 @@ const styles = StyleSheet.create({
   city: { textAlign: 'center', marginTop: 8, paddingHorizontal: 24 },
   section: { marginTop: 16 },
   sectionTitle: { marginBottom: 8 },
-  socialLink: { marginBottom: 6 },
+  socialRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  socialChip: {
+    alignItems: 'center',
+    width: 88,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  socialIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  socialChipLabel: {
+    textAlign: 'center',
+    maxWidth: '100%',
+  },
 });

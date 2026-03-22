@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   TextInput,
   View,
@@ -13,6 +13,8 @@ export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   containerStyle?: ViewStyle;
+  /** Renders inside the field on the left (e.g. platform icon). */
+  leftIcon?: ReactNode;
 }
 
 export function Input({
@@ -20,6 +22,7 @@ export function Input({
   error,
   containerStyle,
   style,
+  leftIcon,
   ...props
 }: InputProps) {
   const { theme } = useTheme();
@@ -32,28 +35,41 @@ export function Input({
           {label}
         </Text>
       ) : null}
-      <TextInput
+      <View
         style={[
-          styles.input,
+          styles.inputShell,
           {
             backgroundColor: colors.surfaceGlass,
             borderColor: error ? colors.error : colors.border,
             borderRadius: radii.lg,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm + 6,
-            minHeight: 56,
-            fontSize: theme.typography.fontSize.base,
-            color: colors.text,
             borderWidth: 1.5,
-            textAlignVertical: 'center',
-            includeFontPadding: false,
+            minHeight: 56,
           },
-          style,
         ]}
-        placeholderTextColor={colors.textMuted}
-        selectionColor={colors.primary}
-        {...props}
-      />
+      >
+        {leftIcon ? (
+          <View style={[styles.leftIconWrap, { paddingLeft: spacing.md }]}>{leftIcon}</View>
+        ) : null}
+        <TextInput
+          style={[
+            styles.input,
+            {
+              flex: 1,
+              paddingVertical: spacing.sm + 6,
+              paddingRight: spacing.md,
+              paddingLeft: leftIcon ? spacing.sm : spacing.md,
+              fontSize: theme.typography.fontSize.base,
+              color: colors.text,
+              textAlignVertical: 'center',
+              includeFontPadding: false,
+            },
+            style,
+          ]}
+          placeholderTextColor={colors.textMuted}
+          selectionColor={colors.primary}
+          {...props}
+        />
+      </View>
       {error ? (
         <Text variant="caption" style={[styles.error, { color: colors.error, marginTop: theme.spacing.xs }]}>
           {error}
@@ -68,6 +84,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {},
+  inputShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  leftIconWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   input: {},
   error: {},
 });
