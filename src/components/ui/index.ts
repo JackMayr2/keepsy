@@ -10,3 +10,5 @@ export { Container } from './Container';
 export type { ContainerProps } from './Container';
 export { PlaceAutocomplete } from './PlaceAutocomplete';
 export type { PlaceAutocompleteProps, ResolvedPlace } from './PlaceAutocomplete';
+export { DatePickerField } from './DatePickerField';
+export type { DatePickerFieldProps } from './DatePickerField';

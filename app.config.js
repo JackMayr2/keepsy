@@ -38,6 +38,7 @@ export default {
           photosPermission: 'Allow Keepsy to access your photos so you can set a profile picture.',
         },
       ],
+      '@react-native-community/datetimepicker',
     ],
     experiments: {
       typedRoutes: true,

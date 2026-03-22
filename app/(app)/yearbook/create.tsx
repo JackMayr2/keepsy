@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -8,7 +8,8 @@ import { generateYearbookVisualOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
 import { BrandLogo, DSIcon } from '@/src/design-system';
-import { Container, Button, Input, Text } from '@/src/components/ui';
+import { Container, Button, Input, Text, DatePickerField } from '@/src/components/ui';
+import { addMonths, toISODateString } from '@/src/utils/dateFormat';
 
 export default function CreateYearbookScreen() {
   const { userId } = useAuth();
@@ -16,12 +17,23 @@ export default function CreateYearbookScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const defaultDue = useMemo(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return toISODateString(addMonths(d, 1));
+  }, []);
+  const [dueDate, setDueDate] = useState(defaultDue);
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
   const [selectedAiUrl, setSelectedAiUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const minimumDueDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const handleGenerate = async () => {
     if (!aiPrompt.trim()) return;
@@ -45,7 +57,7 @@ export default function CreateYearbookScreen() {
       const id = await createYearbook(userId, {
         name: name.trim(),
         description: description.trim() || undefined,
-        dueDate: dueDate.trim() || undefined,
+        dueDate: dueDate.trim() ? dueDate.trim() : undefined,
         aiVisualUrl: selectedAiUrl ?? undefined,
       });
       setLoading(false);
@@ -80,11 +92,12 @@ export default function CreateYearbookScreen() {
           placeholder="What's this yearbook for?"
           multiline
         />
-        <Input
-          label="Due date (optional)"
+        <DatePickerField
+          label="Due date"
           value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="e.g. May 15, 2025"
+          onChange={setDueDate}
+          placeholder="Select due date"
+          minimumDate={minimumDueDate}
         />
         {showAiSection && (
           <View style={styles.aiSection}>

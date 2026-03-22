@@ -80,44 +80,39 @@ type OrganicBlobDefinition = {
   };
 };
 
+/** Softer preset = subtler specular (afterparty / dark blobs). */
 function OrganicBlob({
   width,
   height,
   colors,
   definition,
+  softSpecular = false,
 }: {
   width: number;
   height: number;
   colors: readonly [string, string, string];
   definition: OrganicBlobDefinition;
+  softSpecular?: boolean;
 }) {
-  return (
-    <View style={{ width, height }}>
-      <LinearGradient
-        colors={[colors[0], colors[1], 'rgba(255,255,255,0)']}
-        start={{ x: 0.12, y: 0.08 }}
-        end={{ x: 0.9, y: 1 }}
-        style={[
-          styles.glow,
-          {
-            left: definition.main.left - width * 0.02,
-            top: definition.main.top + height * 0.04,
-            width: definition.main.width * 1.06,
-            height: definition.main.height * 1.08,
-            transform: [
-              { rotate: definition.main.rotate },
-              { skewX: definition.main.skewX },
-              { skewY: definition.main.skewY },
-            ],
-          },
-          definition.main.radii,
-        ]}
-      />
+  const rim = softSpecular ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.38)';
+  const glintA = softSpecular ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.62)';
+  const glintB = softSpecular ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)';
+  const satRim = softSpecular ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.32)';
 
+  const mainTransform = [
+    { rotate: definition.main.rotate },
+    { skewX: definition.main.skewX },
+    { skewY: definition.main.skewY },
+  ] as const;
+
+  return (
+    <View style={{ width, height, overflow: 'visible' }}>
+      {/* Volume: light top-left → rich mid → deeper bottom-right (3D sphere read) */}
       <LinearGradient
-        colors={[...colors]}
-        start={{ x: 0.14, y: 0.06 }}
-        end={{ x: 0.9, y: 0.92 }}
+        colors={[rim, colors[0], colors[1], colors[2]]}
+        locations={[0, 0.22, 0.52, 1]}
+        start={{ x: 0.18, y: 0.08 }}
+        end={{ x: 0.82, y: 0.94 }}
         style={[
           styles.mainShape,
           {
@@ -125,11 +120,7 @@ function OrganicBlob({
             top: definition.main.top,
             width: definition.main.width,
             height: definition.main.height,
-            transform: [
-              { rotate: definition.main.rotate },
-              { skewX: definition.main.skewX },
-              { skewY: definition.main.skewY },
-            ],
+            transform: mainTransform,
           },
           definition.main.radii,
         ]}
@@ -138,9 +129,10 @@ function OrganicBlob({
       {definition.satellites?.map((satellite, index) => (
         <LinearGradient
           key={`satellite-${index}`}
-          colors={[...colors]}
-          start={{ x: 0.12, y: 0.08 }}
-          end={{ x: 0.9, y: 0.92 }}
+          colors={[satRim, colors[0], colors[1]]}
+          locations={[0, 0.35, 1]}
+          start={{ x: 0.2, y: 0.15 }}
+          end={{ x: 0.85, y: 0.9 }}
           style={[
             styles.satellite,
             {
@@ -153,17 +145,36 @@ function OrganicBlob({
           ]}
         />
       ))}
+
+      {/* Primary specular “bubble” highlight */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.9, y: 0.9 }}
+        colors={[glintA, glintB, 'transparent']}
+        locations={[0, 0.35, 1]}
+        start={{ x: 0.15, y: 0.12 }}
+        end={{ x: 0.95, y: 0.88 }}
         style={[
-          styles.highlight,
+          styles.specularLarge,
           {
-            left: definition.highlight.left,
+            left: definition.highlight.left - definition.highlight.width * 0.15,
+            top: definition.highlight.top - definition.highlight.height * 0.2,
+            width: definition.highlight.width * 1.8,
+            height: definition.highlight.height * 2.4,
+            transform: [{ rotate: definition.highlight.rotate }],
+          },
+        ]}
+      />
+      {/* Tight bright glint */}
+      <LinearGradient
+        colors={[softSpecular ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.45)', 'transparent']}
+        start={{ x: 0.2, y: 0.2 }}
+        end={{ x: 0.75, y: 0.75 }}
+        style={[
+          styles.specularPin,
+          {
+            left: definition.highlight.left + definition.highlight.width * 0.15,
             top: definition.highlight.top,
-            width: definition.highlight.width,
-            height: definition.highlight.height,
+            width: definition.highlight.width * 0.75,
+            height: definition.highlight.height * 1.1,
             transform: [{ rotate: definition.highlight.rotate }],
           },
         ]}
@@ -178,6 +189,7 @@ export function BrandBackground({ preset = 'daydream' }: BrandBackgroundProps) {
   const driftB = useRef(new Animated.Value(0)).current;
   const driftC = useRef(new Animated.Value(0)).current;
   const config = presetConfig[preset];
+  const softSpecular = preset === 'afterparty';
 
   useEffect(() => {
     const loops = [
@@ -222,6 +234,7 @@ export function BrandBackground({ preset = 'daydream' }: BrandBackgroundProps) {
           width={width * 0.88}
           height={width * 0.88}
           colors={config.blobs[0]}
+          softSpecular={softSpecular}
           definition={{
             main: {
               left: width * 0.06,
@@ -276,6 +289,7 @@ export function BrandBackground({ preset = 'daydream' }: BrandBackgroundProps) {
           width={width * 0.7}
           height={width * 0.7}
           colors={config.blobs[1]}
+          softSpecular={softSpecular}
           definition={{
             main: {
               left: width * 0.02,
@@ -331,6 +345,7 @@ export function BrandBackground({ preset = 'daydream' }: BrandBackgroundProps) {
           width={width * 0.54}
           height={width * 0.54}
           colors={config.blobs[2]}
+          softSpecular={softSpecular}
           definition={{
             main: {
               left: width * 0.02,
@@ -370,7 +385,7 @@ export function BrandBackground({ preset = 'daydream' }: BrandBackgroundProps) {
         colors={[...config.sheen]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.8, y: 0.9 }}
-        style={styles.sheen}
+        style={[styles.sheen, preset === 'afterparty' ? styles.sheenAfterparty : styles.sheenDaydream]}
       />
     </View>
   );
@@ -380,24 +395,34 @@ const styles = StyleSheet.create({
   blob: {
     position: 'absolute',
     opacity: 1,
+    overflow: 'visible',
   },
   mainShape: {
     position: 'absolute',
-  },
-  glow: {
-    position: 'absolute',
-    opacity: 0.34,
   },
   satellite: {
     position: 'absolute',
     borderRadius: 999,
   },
-  highlight: {
+  /** Soft elliptical specular zone (glossy bubble) */
+  specularLarge: {
     position: 'absolute',
     borderRadius: 999,
+    opacity: 0.85,
+  },
+  /** Small bright catch-light */
+  specularPin: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.9,
   },
   sheen: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
+  },
+  sheenDaydream: {
+    opacity: 0.38,
+  },
+  sheenAfterparty: {
+    opacity: 0.22,
   },
 });

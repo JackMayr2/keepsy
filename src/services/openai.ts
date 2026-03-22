@@ -1,10 +1,7 @@
 import { getOpenAIConfig, isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
 
-export async function generateYearbookVisualOptions(
-  prompt: string,
-  count: number = 4
-): Promise<string[]> {
+async function generateDalleImages(prompt: string, count: number = 4): Promise<string[]> {
   if (!isOpenAIConfigured()) {
     return [];
   }
@@ -25,8 +22,9 @@ export async function generateYearbookVisualOptions(
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    const msg = (err as { error?: { message?: string } })?.error?.message ?? response.statusText ?? 'Image generation failed';
-    logger.error('OpenAI', 'generateYearbookVisualOptions failed', { status: response.status, message: msg });
+    const msg =
+      (err as { error?: { message?: string } })?.error?.message ?? response.statusText ?? 'Image generation failed';
+    logger.error('OpenAI', 'generateDalleImages failed', { status: response.status, message: msg });
     throw new Error(msg);
   }
   const data = (await response.json()) as { data?: Array<{ url?: string }> };
@@ -34,4 +32,19 @@ export async function generateYearbookVisualOptions(
     if (item.url) urls.push(item.url);
   }
   return urls;
+}
+
+export async function generateYearbookVisualOptions(prompt: string, count: number = 4): Promise<string[]> {
+  return generateDalleImages(prompt, count);
+}
+
+/**
+ * Yearbook-style profile portraits (shown on member profiles / avatars).
+ */
+export async function generateProfileAvatarOptions(userPrompt: string, count: number = 4): Promise<string[]> {
+  const styled = `Professional yearbook profile portrait photograph, head and shoulders, natural friendly expression, soft even lighting, clean simple or softly blurred background, single person, realistic, suitable as a yearbook photo: ${userPrompt}`.slice(
+    0,
+    1000
+  );
+  return generateDalleImages(styled, count);
 }

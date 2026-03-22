@@ -1,24 +1,60 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbook } from '@/src/hooks/useYearbook';
 import { updateYearbook } from '@/src/services/firestore';
+import { generateYearbookVisualOptions } from '@/src/services/openai';
+import { isOpenAIConfigured } from '@/src/config/openai';
+import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
-import { Container, Text, Button, Input } from '@/src/components/ui';
+import { Container, Text, Button, Input, DatePickerField } from '@/src/components/ui';
+import { useTheme } from '@/src/contexts/ThemeContext';
 
 export default function YearbookSettingsScreen() {
   const id = useYearbookId();
+  const { theme } = useTheme();
   const { yearbook, loading, refresh } = useYearbook(id);
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
+  const [selectedAiUrl, setSelectedAiUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const showAi = isOpenAIConfigured();
+
+  const minimumDueDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   React.useEffect(() => {
     if (yearbook) {
       setDescription(yearbook.description ?? '');
       setDueDate(yearbook.dueDate ?? '');
+      setSelectedAiUrl(yearbook.aiVisualUrl ?? null);
+      setGeneratedUrls([]);
     }
   }, [yearbook]);
+
+  const handleGenerateCover = async () => {
+    if (!aiPrompt.trim()) {
+      Alert.alert('Describe the image', 'Enter a short description for the yearbook cover.');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const urls = await generateYearbookVisualOptions(aiPrompt.trim(), 4);
+      setGeneratedUrls(urls);
+      setSelectedAiUrl(urls[0] ?? selectedAiUrl);
+    } catch (e) {
+      logger.error('YearbookSettings', 'generateYearbookVisualOptions failed', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!id) return;
@@ -27,6 +63,7 @@ export default function YearbookSettingsScreen() {
       await updateYearbook(id, {
         description: description.trim() || undefined,
         dueDate: dueDate.trim() || undefined,
+        aiVisualUrl: selectedAiUrl ?? null,
       });
       refresh();
     } finally {
@@ -56,12 +93,53 @@ export default function YearbookSettingsScreen() {
         placeholder="Yearbook description"
         multiline
       />
-      <Input
+      <DatePickerField
         label="Due date"
         value={dueDate}
-        onChangeText={setDueDate}
-        placeholder="e.g. May 15, 2025"
+        onChange={setDueDate}
+        placeholder="Select due date"
+        minimumDate={minimumDueDate}
       />
+
+      {showAi ? (
+        <View style={styles.aiSection}>
+          <Text variant="title" style={styles.sectionTitle}>
+            Yearbook cover image
+          </Text>
+          {selectedAiUrl ? (
+            <Image source={{ uri: selectedAiUrl }} style={styles.currentCover} resizeMode="cover" />
+          ) : null}
+          <Input
+            label="Describe the cover"
+            value={aiPrompt}
+            onChangeText={setAiPrompt}
+            placeholder="e.g. Sorority house at sunset, polaroid style"
+            containerStyle={styles.inputTight}
+          />
+          <Button
+            title={generatedUrls.length ? 'Regenerate options' : 'Generate options'}
+            variant="outline"
+            onPress={handleGenerateCover}
+            loading={generating}
+            icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
+            style={styles.genBtn}
+          />
+          {generatedUrls.length > 0 ? (
+            <View style={styles.grid}>
+              {generatedUrls.map((url) => (
+                <Pressable
+                  key={url}
+                  style={[styles.gridItem, selectedAiUrl === url && styles.gridItemSelected]}
+                  onPress={() => setSelectedAiUrl(url)}
+                >
+                  <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       <Button
         title="Save changes"
         onPress={handleSave}
@@ -80,4 +158,34 @@ const styles = StyleSheet.create({
   sectionTitle: { marginBottom: 12 },
   saveBtn: { marginTop: 16 },
   hint: { marginTop: 24 },
+  aiSection: { marginTop: 8 },
+  currentCover: {
+    width: '100%',
+    height: 140,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  inputTight: { marginBottom: 8 },
+  genBtn: { marginTop: 4 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  gridItem: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  gridItemSelected: {
+    borderColor: '#8B5CF6',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
 });

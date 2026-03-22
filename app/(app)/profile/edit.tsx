@@ -12,6 +12,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { getUser, updateUser } from '@/src/services/firestore';
 import { uploadProfileImage } from '@/src/services/storage';
+import { generateProfileAvatarOptions } from '@/src/services/openai';
+import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
 import { Container, Button, Input, Text, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
@@ -38,6 +40,10 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [aiAvatarPrompt, setAiAvatarPrompt] = useState('');
+  const [aiAvatarUrls, setAiAvatarUrls] = useState<string[]>([]);
+  const [generatingAvatar, setGeneratingAvatar] = useState(false);
+  const showAiAvatar = isOpenAIConfigured();
 
   useEffect(() => {
     if (!userId) return;
@@ -98,6 +104,38 @@ export default function EditProfileScreen() {
     } catch (e) {
       logger.error('EditProfile', 'uploadProfileImage failed', e);
       Alert.alert('Error', 'Could not upload photo. Try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleGenerateAiAvatar = async () => {
+    if (!aiAvatarPrompt.trim()) {
+      Alert.alert('Describe your photo', 'Enter how you want your yearbook-style portrait to look.');
+      return;
+    }
+    setGeneratingAvatar(true);
+    try {
+      const urls = await generateProfileAvatarOptions(aiAvatarPrompt.trim(), 4);
+      setAiAvatarUrls(urls);
+    } catch (e) {
+      logger.error('EditProfile', 'generateProfileAvatarOptions failed', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not generate images.');
+    } finally {
+      setGeneratingAvatar(false);
+    }
+  };
+
+  const applyAiAvatar = async (remoteUrl: string) => {
+    if (!userId) return;
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadProfileImage(userId, remoteUrl);
+      await updateUser(userId, { photoURL: url });
+      setPhotoURL(url);
+    } catch (e) {
+      logger.error('EditProfile', 'applyAiAvatar failed', e);
+      Alert.alert('Error', 'Could not save AI photo. Try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -174,6 +212,49 @@ export default function EditProfileScreen() {
           Tap to change profile picture
         </Text>
       </View>
+
+      {showAiAvatar ? (
+        <View style={styles.aiAvatarSection}>
+          <Text variant="label" color="secondary" style={styles.aiAvatarLabel}>
+            AI yearbook portrait (optional)
+          </Text>
+          <Input
+            value={aiAvatarPrompt}
+            onChangeText={setAiAvatarPrompt}
+            placeholder="e.g. smiling, navy blazer, studio lighting"
+            containerStyle={styles.aiAvatarInput}
+          />
+          <Button
+            title={aiAvatarUrls.length ? 'Regenerate portraits' : 'Generate portraits'}
+            variant="outline"
+            onPress={handleGenerateAiAvatar}
+            loading={generatingAvatar}
+            disabled={uploadingPhoto}
+            icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
+            style={styles.aiGenBtn}
+          />
+          {aiAvatarUrls.length > 0 ? (
+            <View style={styles.aiAvatarGrid}>
+              {aiAvatarUrls.map((url) => (
+                <Pressable
+                  key={url}
+                  onPress={() => applyAiAvatar(url)}
+                  disabled={uploadingPhoto}
+                  style={({ pressed }) => [
+                    styles.aiAvatarTile,
+                    { opacity: pressed || uploadingPhoto ? 0.7 : 1 },
+                  ]}
+                >
+                  <Image source={{ uri: url }} style={styles.aiAvatarImage} resizeMode="cover" />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <Text variant="caption" color="secondary" style={styles.aiAvatarHint}>
+            Tap a portrait to use it as your profile photo.
+          </Text>
+        </View>
+      ) : null}
 
       <Text variant="body" color="secondary" style={styles.hint}>
         Update your name and contact info. This is visible to others in your yearbooks.
@@ -288,6 +369,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarHint: { marginTop: 8 },
+  aiAvatarSection: {
+    marginBottom: 24,
+    paddingBottom: 8,
+  },
+  aiAvatarLabel: { marginBottom: 8 },
+  aiAvatarInput: { marginBottom: 8 },
+  aiGenBtn: { marginBottom: 12 },
+  aiAvatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  aiAvatarTile: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(102, 92, 165, 0.2)',
+  },
+  aiAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  aiAvatarHint: { marginTop: 10 },
   socialSectionTitle: { marginBottom: 8, marginTop: 8 },
   cityHint: { marginTop: -8, marginBottom: 16 },
 });
