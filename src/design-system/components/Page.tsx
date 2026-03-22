@@ -1,10 +1,11 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { YStack, YStackProps } from 'tamagui';
-import { standardScrollViewProps } from '../constants/scroll';
-import { BrandBackground, BrandBackgroundPreset } from './BrandBackground';
+import type { BrandBackgroundPreset } from './BrandBackground';
+import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
+import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 
 type PageProps = YStackProps & {
   scroll?: boolean;
@@ -32,7 +33,7 @@ export function Page({
 
   const content = (
     <YStack flex={1} position="relative" overflow="hidden" backgroundColor="transparent">
-      <BrandBackground preset={backgroundPreset} />
+      <ScreenBackground preset={backgroundPreset} />
       <YStack
         flex={1}
         zIndex={1}
@@ -49,11 +50,10 @@ export function Page({
   if (scroll) {
     return (
       <View style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <BrandBackground preset={backgroundPreset} />
-        <ScrollView
+        <ScreenBackground preset={backgroundPreset} />
+        <AppKeyboardAwareScrollView
           style={{ flex: 1, backgroundColor: 'transparent' }}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: bottomPadding }}
-          {...standardScrollViewProps}
         >
           <YStack
             flex={1}
@@ -65,7 +65,7 @@ export function Page({
           >
             {children}
           </YStack>
-        </ScrollView>
+        </AppKeyboardAwareScrollView>
       </View>
     );
   }

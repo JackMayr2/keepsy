@@ -9,22 +9,22 @@ import {
   Image,
   Alert,
   Platform,
-  ScrollView,
-  KeyboardAvoidingView,
   Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import MapView, { Marker } from 'react-native-maps';
+import MapView from 'react-native-maps';
 import { useNavigation } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
-import { getTravels, createTravel, type Travel } from '@/src/services/firestore';
+import { getTravels, createTravel, getYearbookMembers, getUser, type Travel } from '@/src/services/firestore';
 import { uploadTravelImage } from '@/src/services/storage';
 import { getLocationFromImageAsset } from '@/src/utils/imageLocation';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
-import { Container, Text, Button, Input } from '@/src/components/ui';
+import { Container, Text, Button, Input, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
+import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
+import { MapProfileMarker, initialsFromName } from '@/src/components/maps/MapProfileMarker';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/contexts/ThemeContext';
@@ -33,6 +33,12 @@ const LIST_PADDING_BASE = 24;
 const DEFAULT_LAT = 37.7749;
 const DEFAULT_LNG = -122.4194;
 const MAP_DELTA = 0.05;
+
+type MapPinDetail =
+  | { kind: 'travel'; travel: Travel }
+  | { kind: 'home'; userId: string; name: string; label: string; photoURL?: string | null };
+
+type TravelAuthorInfo = { photoURL?: string | null; initials: string };
 
 export default function TravelsTab() {
   const id = useYearbookId();
@@ -53,10 +59,22 @@ export default function TravelsTab() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [saving, setSaving] = useState(false);
-  const [selectedTravel, setSelectedTravel] = useState<Travel | null>(null);
+  const [mapDetail, setMapDetail] = useState<MapPinDetail | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [fabOpen, setFabOpen] = useState(false);
   const fabExpand = useRef(new Animated.Value(0)).current;
+  const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
+  const [memberHomes, setMemberHomes] = useState<
+    {
+      userId: string;
+      name: string;
+      label: string;
+      latitude: number;
+      longitude: number;
+      photoURL?: string | null;
+    }[]
+  >([]);
+  const [travelAuthors, setTravelAuthors] = useState<Record<string, TravelAuthorInfo>>({});
 
   useEffect(() => {
     Animated.timing(fabExpand, {
@@ -79,6 +97,18 @@ export default function TravelsTab() {
     try {
       const list = await getTravels(id);
       setTravels(list);
+      const uids = [...new Set(list.map((t) => t.userId))];
+      const profiles = await Promise.all(uids.map((uid) => getUser(uid)));
+      const byId: Record<string, TravelAuthorInfo> = {};
+      uids.forEach((uid, i) => {
+        const u = profiles[i];
+        const name = u ? [u.firstName, u.lastName].filter(Boolean).join(' ') : '';
+        byId[uid] = {
+          photoURL: u?.photoURL ?? null,
+          initials: initialsFromName(name || 'Member'),
+        };
+      });
+      setTravelAuthors(byId);
     } catch (e) {
       logger.error('TravelsTab', 'load failed', e);
       Alert.alert('Error', 'Could not load trips.');
@@ -89,6 +119,45 @@ export default function TravelsTab() {
 
   useEffect(() => {
     load();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const members = await getYearbookMembers(id);
+        const profiles = await Promise.all(members.map((m) => getUser(m.userId)));
+        const homes: {
+          userId: string;
+          name: string;
+          label: string;
+          latitude: number;
+          longitude: number;
+        }[] = [];
+        profiles.forEach((u, i) => {
+          if (!u) return;
+          const lat = u.homeLatitude;
+          const lng = u.homeLongitude;
+          if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Member';
+          homes.push({
+            userId: members[i].userId,
+            name,
+            label: u.city?.trim() || `${name}'s home`,
+            latitude: lat,
+            longitude: lng,
+            photoURL: u.photoURL ?? null,
+          });
+        });
+        if (!cancelled) setMemberHomes(homes);
+      } catch (e) {
+        logger.error('TravelsTab', 'load member homes failed', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const pickPhoto = async () => {
@@ -136,15 +205,18 @@ export default function TravelsTab() {
     setSaving(true);
     try {
       const photoURL = await uploadTravelImage(id, userId, photoUri);
-      const lat = latitude.trim() ? parseFloat(latitude) : null;
-      const lng = longitude.trim() ? parseFloat(longitude) : null;
+      const norm = (s: string) => s.trim().replace(/,/g, '.');
+      const latRaw = latitude.trim() ? parseFloat(norm(latitude)) : NaN;
+      const lngRaw = longitude.trim() ? parseFloat(norm(longitude)) : NaN;
+      const latOk = Number.isFinite(latRaw) && latRaw >= -90 && latRaw <= 90;
+      const lngOk = Number.isFinite(lngRaw) && lngRaw >= -180 && lngRaw <= 180;
       await createTravel(id, userId, {
         photoURL,
         caption: caption.trim() || null,
         placeName: placeName.trim() || null,
         notes: caption.trim() || null,
-        latitude: lat ?? null,
-        longitude: lng ?? null,
+        latitude: latOk ? latRaw : null,
+        longitude: lngOk ? lngRaw : null,
       });
       resetAddForm();
       load();
@@ -156,16 +228,46 @@ export default function TravelsTab() {
     }
   };
 
-  const travelsWithLocation = travels.filter((t) => t.latitude != null && t.longitude != null);
-  const hasPins = travelsWithLocation.length > 0;
-  const initialRegion = hasPins
-    ? undefined
-    : {
-        latitude: DEFAULT_LAT,
-        longitude: DEFAULT_LNG,
-        latitudeDelta: MAP_DELTA,
-        longitudeDelta: MAP_DELTA,
-      };
+  const travelsWithLocation = travels.filter(
+    (t) =>
+      t.latitude != null &&
+      t.longitude != null &&
+      Number.isFinite(t.latitude) &&
+      Number.isFinite(t.longitude)
+  );
+  const hasPins = travelsWithLocation.length + memberHomes.length > 0;
+
+  const mapInitialRegion = {
+    latitude: travelsWithLocation[0]?.latitude ?? memberHomes[0]?.latitude ?? DEFAULT_LAT,
+    longitude: travelsWithLocation[0]?.longitude ?? memberHomes[0]?.longitude ?? DEFAULT_LNG,
+    latitudeDelta: MAP_DELTA,
+    longitudeDelta: MAP_DELTA,
+  };
+
+  useEffect(() => {
+    if (Platform.OS === 'web' || activeTab !== 'map') return;
+    const tripCoords = travels
+      .filter(
+        (t) =>
+          t.latitude != null &&
+          t.longitude != null &&
+          Number.isFinite(t.latitude) &&
+          Number.isFinite(t.longitude)
+      )
+      .map((t) => ({ latitude: t.latitude!, longitude: t.longitude! }));
+    const coords = [
+      ...tripCoords,
+      ...memberHomes.map((h) => ({ latitude: h.latitude, longitude: h.longitude })),
+    ];
+    if (coords.length === 0) return;
+    const t = setTimeout(() => {
+      mapRef.current?.fitToCoordinates(coords, {
+        edgePadding: { top: 100, right: 48, bottom: 220, left: 48 },
+        animated: true,
+      });
+    }, 450);
+    return () => clearTimeout(t);
+  }, [activeTab, travels, memberHomes]);
 
   if (loading) {
     return (
@@ -185,11 +287,11 @@ export default function TravelsTab() {
       {activeTab === 'map' && Platform.OS !== 'web' && (
         <View style={StyleSheet.absoluteFill}>
           <MapView
+            ref={mapRef}
             style={StyleSheet.absoluteFill}
-            initialRegion={initialRegion}
-            region={
+            initialRegion={
               hasPins
-                ? undefined
+                ? mapInitialRegion
                 : {
                     latitude: DEFAULT_LAT,
                     longitude: DEFAULT_LNG,
@@ -197,17 +299,45 @@ export default function TravelsTab() {
                     longitudeDelta: 0.5,
                   }
             }
+            showsUserLocation={false}
+            showsMyLocationButton={false}
           >
-            {travelsWithLocation.map((t) => (
-              <Marker
-                key={t.id}
-                coordinate={{
-                  latitude: t.latitude!,
-                  longitude: t.longitude!,
-                }}
-                title={t.placeName || t.caption || 'Trip'}
-                description={t.caption || t.placeName || ''}
-                onCalloutPress={() => setSelectedTravel(t)}
+            {travelsWithLocation.map((t) => {
+              const author = travelAuthors[t.userId] ?? { initials: '?' };
+              return (
+                <MapProfileMarker
+                  key={t.id}
+                  coordinate={{
+                    latitude: t.latitude!,
+                    longitude: t.longitude!,
+                  }}
+                  photoURL={author.photoURL}
+                  initials={author.initials}
+                  title={t.placeName || t.caption || 'Trip'}
+                  description={t.caption || t.placeName || ''}
+                  variant="trip"
+                  onPress={() => setMapDetail({ kind: 'travel', travel: t })}
+                />
+              );
+            })}
+            {memberHomes.map((h) => (
+              <MapProfileMarker
+                key={`home-${h.userId}`}
+                coordinate={{ latitude: h.latitude, longitude: h.longitude }}
+                photoURL={h.photoURL}
+                initials={initialsFromName(h.name)}
+                title={`${h.name} — home`}
+                description={h.label}
+                variant="home"
+                onPress={() =>
+                  setMapDetail({
+                    kind: 'home',
+                    userId: h.userId,
+                    name: h.name,
+                    label: h.label,
+                    photoURL: h.photoURL,
+                  })
+                }
               />
             ))}
           </MapView>
@@ -227,7 +357,7 @@ export default function TravelsTab() {
           renderItem={({ item }) => (
             <Pressable
               style={[styles.row, { borderBottomColor: theme.colors.borderMuted }]}
-              onPress={() => setSelectedTravel(item)}
+              onPress={() => setMapDetail({ kind: 'travel', travel: item })}
             >
               {item.photoURL ? (
                 <Image source={{ uri: item.photoURL }} style={styles.rowImage} />
@@ -327,13 +457,18 @@ export default function TravelsTab() {
 
       {/* Add trip modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalRoot}>
+        <View style={styles.modalRoot}>
           <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
             <Pressable
               style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
               onPress={(e) => e.stopPropagation()}
             >
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <AppKeyboardAwareScrollView
+                showsVerticalScrollIndicator={false}
+                extraScrollHeight={140}
+                extraHeight={32}
+                contentContainerStyle={styles.modalScrollContent}
+              >
                 <Text variant="title" style={styles.modalTitle}>
                   Add trip
                 </Text>
@@ -366,18 +501,25 @@ export default function TravelsTab() {
                   multiline
                   style={styles.input}
                 />
-                <Input
-                  label="Place name (optional)"
+                <PlaceAutocomplete
+                  label="Place for map pin (optional)"
+                  placeholder="Search for a city or place"
                   value={placeName}
                   onChangeText={setPlaceName}
-                  placeholder="e.g. Paris, France"
-                  style={styles.input}
+                  invalidateResolvedWhenTextChanges={false}
+                  onResolvedPlaceChange={(p: ResolvedPlace | null) => {
+                    if (p) {
+                      setLatitude(p.latitude.toFixed(6));
+                      setLongitude(p.longitude.toFixed(6));
+                    }
+                  }}
+                  containerStyle={styles.input}
                 />
-                <Text variant="label" color="secondary" style={styles.sectionLabel}>
-                  Location for map pin (optional)
-                </Text>
                 <Text variant="caption" color="secondary" style={styles.sectionHint}>
-                  If the photo has no location data, enter coordinates below.
+                  Pick a suggestion to place the pin accurately. Photo GPS fills coordinates when available.
+                </Text>
+                <Text variant="label" color="secondary" style={styles.sectionLabel}>
+                  Or enter coordinates manually
                 </Text>
                 <View style={styles.coordRow}>
                   <Input
@@ -407,39 +549,86 @@ export default function TravelsTab() {
                     icon={<DSIcon name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} size={16} color="#FFFFFF" />}
                   />
                 </View>
-              </ScrollView>
+              </AppKeyboardAwareScrollView>
             </Pressable>
           </Pressable>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
-      {/* Pin / trip detail modal */}
-      <Modal visible={!!selectedTravel} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedTravel(null)}>
+      {/* Map pin detail (trip or member home) */}
+      <Modal visible={!!mapDetail} animationType="slide" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setMapDetail(null)}>
           <Pressable
             style={[styles.detailContent, { backgroundColor: theme.colors.surface }]}
             onPress={(e) => e.stopPropagation()}
           >
-            {selectedTravel && (
+            {mapDetail?.kind === 'travel' ? (
               <>
-                {selectedTravel.photoURL ? (
-                  <Image source={{ uri: selectedTravel.photoURL }} style={styles.detailImage} resizeMode="cover" />
+                {mapDetail.travel.photoURL ? (
+                  <Image source={{ uri: mapDetail.travel.photoURL }} style={styles.detailImage} resizeMode="cover" />
                 ) : null}
                 <View style={styles.detailBody}>
-                  {selectedTravel.placeName ? (
+                  {(() => {
+                    const a = travelAuthors[mapDetail.travel.userId];
+                    if (!a) return null;
+                    return (
+                      <View style={styles.detailAuthorRow}>
+                        {a.photoURL ? (
+                          <Image source={{ uri: a.photoURL }} style={styles.detailAuthorAvatar} />
+                        ) : (
+                          <View style={[styles.detailAuthorAvatar, styles.detailAuthorFallback]}>
+                            <Text variant="caption" style={styles.detailAuthorInitials}>
+                              {a.initials}
+                            </Text>
+                          </View>
+                        )}
+                        <Text variant="caption" color="secondary">
+                          Posted by a yearbook member
+                        </Text>
+                      </View>
+                    );
+                  })()}
+                  {mapDetail.travel.placeName ? (
                     <Text variant="title" style={styles.detailTitle}>
-                      {selectedTravel.placeName}
+                      {mapDetail.travel.placeName}
                     </Text>
                   ) : null}
-                  {(selectedTravel.caption || selectedTravel.notes) ? (
+                  {mapDetail.travel.caption || mapDetail.travel.notes ? (
                     <Text variant="body" color="secondary" style={styles.detailCaption}>
-                      {selectedTravel.caption || selectedTravel.notes}
+                      {mapDetail.travel.caption || mapDetail.travel.notes}
                     </Text>
                   ) : null}
                 </View>
-                <Button title="Close" variant="ghost" onPress={() => setSelectedTravel(null)} />
+                <Button title="Close" variant="ghost" onPress={() => setMapDetail(null)} />
               </>
-            )}
+            ) : null}
+            {mapDetail?.kind === 'home' ? (
+              <View style={styles.detailBody}>
+                <View style={styles.homeHeaderRow}>
+                  {mapDetail.photoURL ? (
+                    <Image source={{ uri: mapDetail.photoURL }} style={styles.detailHomeAvatar} />
+                  ) : (
+                    <View style={[styles.detailHomeAvatar, styles.detailAuthorFallback]}>
+                      <Text variant="title" style={styles.detailAuthorInitials}>
+                        {initialsFromName(mapDetail.name)}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.homeHeaderText}>
+                    <Text variant="title" style={styles.detailTitle}>
+                      {mapDetail.name}
+                    </Text>
+                    <Text variant="label" color="secondary" style={styles.homeBadge}>
+                      Home location
+                    </Text>
+                  </View>
+                </View>
+                <Text variant="body" color="secondary" style={styles.detailCaption}>
+                  {mapDetail.label}
+                </Text>
+                <Button title="Close" variant="ghost" onPress={() => setMapDetail(null)} style={styles.homeCloseBtn} />
+              </View>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>
@@ -531,6 +720,10 @@ const styles = StyleSheet.create({
     padding: 24,
     maxHeight: '90%',
   },
+  modalScrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   modalTitle: { marginBottom: 8 },
   modalHint: { marginBottom: 16 },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
@@ -560,4 +753,35 @@ const styles = StyleSheet.create({
   detailBody: { padding: 24 },
   detailTitle: { marginBottom: 8 },
   detailCaption: {},
+  detailAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  detailAuthorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  detailAuthorFallback: {
+    backgroundColor: '#7C6BB5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailAuthorInitials: { color: '#fff', fontWeight: '700' },
+  homeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 12,
+  },
+  detailHomeAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  homeHeaderText: { flex: 1 },
+  homeBadge: { marginBottom: 0, marginTop: 4 },
+  homeCloseBtn: { marginTop: 16 },
 });

@@ -83,7 +83,6 @@ export default function RootLayout() {
       <ThemeProvider>
         <TamaguiProviderWrapper>
           <AuthProvider>
-            <StatusBar style="dark" />
             <DeepLinkHandler />
             <RootLayoutNav />
           </AuthProvider>
@@ -97,6 +96,7 @@ function TamaguiProviderWrapper({ children }: { children: React.ReactNode }) {
   const { colorScheme } = useTheme();
   return (
     <TamaguiProvider config={config} defaultTheme={colorScheme}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       {children}
     </TamaguiProvider>
   );

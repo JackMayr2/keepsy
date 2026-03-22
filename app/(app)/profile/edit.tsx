@@ -14,7 +14,7 @@ import { getUser, updateUser } from '@/src/services/firestore';
 import { uploadProfileImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
-import { Container, Button, Input, Text } from '@/src/components/ui';
+import { Container, Button, Input, Text, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 const SOCIAL_KEYS = [
@@ -33,6 +33,8 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState('');
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [cityText, setCityText] = useState('');
+  const [homePlace, setHomePlace] = useState<ResolvedPlace | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -48,6 +50,23 @@ export default function EditProfileScreen() {
           setBio(user.bio ?? '');
           setPhotoURL(user.photoURL ?? null);
           setSocialLinks(user.socialLinks ?? {});
+          const c = user.city?.trim() ?? '';
+          setCityText(c);
+          if (
+            c &&
+            user.homeLatitude != null &&
+            user.homeLongitude != null &&
+            Number.isFinite(user.homeLatitude) &&
+            Number.isFinite(user.homeLongitude)
+          ) {
+            setHomePlace({
+              label: c,
+              latitude: user.homeLatitude,
+              longitude: user.homeLongitude,
+            });
+          } else {
+            setHomePlace(null);
+          }
         }
       })
       .catch((e) => {
@@ -102,6 +121,9 @@ export default function EditProfileScreen() {
         email: email.trim(),
         bio: bio.trim() || undefined,
         socialLinks: Object.keys(links).length ? links : undefined,
+        city: cityText.trim() ? cityText.trim() : null,
+        homeLatitude: homePlace ? homePlace.latitude : null,
+        homeLongitude: homePlace ? homePlace.longitude : null,
       });
       setLoading(false);
       router.back();
@@ -190,6 +212,19 @@ export default function EditProfileScreen() {
         containerStyle={styles.input}
       />
 
+      <PlaceAutocomplete
+        label="Home city (optional)"
+        placeholder="Search for your city"
+        value={cityText}
+        onChangeText={setCityText}
+        onResolvedPlaceChange={setHomePlace}
+        syncedResolvedPlace={homePlace}
+        containerStyle={styles.input}
+      />
+      <Text variant="caption" color="secondary" style={styles.cityHint}>
+        Pick a suggestion to save your location on yearbook maps. Typing alone saves the name only.
+      </Text>
+
       <Text variant="label" color="secondary" style={styles.socialSectionTitle}>
         Social links (optional)
       </Text>
@@ -254,4 +289,5 @@ const styles = StyleSheet.create({
   },
   avatarHint: { marginTop: 8 },
   socialSectionTitle: { marginBottom: 8, marginTop: 8 },
+  cityHint: { marginTop: -8, marginBottom: 16 },
 });

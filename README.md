@@ -18,8 +18,9 @@ EXPO_PUBLIC_FIREBASE_APP_ID=
 
 # Optional:
 EXPO_PUBLIC_OPENAI_API_KEY=   # For AI yearbook cover images
-EXPO_PUBLIC_GOOGLE_PLACES_API_KEY=   # For city/location autocomplete
 ```
+
+City / place search uses [Photon](https://photon.komoot.io) (OpenStreetMap data); no API key required.
 
 3. Run: `npx expo start`
 
@@ -33,6 +34,7 @@ EXPO_PUBLIC_GOOGLE_PLACES_API_KEY=   # For city/location autocomplete
 - Yearbooks: create, join by code, leave
 - Prompts (text/photo), drafts, submissions
 - Polls (vote then see results), superlatives
-- Travels (place + notes)
+- Travels (photos, map pins, place search autocomplete)
+- Profile home city with autocomplete; member home pins on the yearbook map
 - Optional AI cover image (OpenAI) when creating a yearbook
 - Yearbook settings (description, due date, invite code)

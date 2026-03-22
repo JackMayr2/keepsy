@@ -39,6 +39,8 @@ export async function getUser(uid: string): Promise<User | null> {
     bio: data.bio,
     photoURL: data.photoURL,
     city: data.city,
+    homeLatitude: data.homeLatitude ?? null,
+    homeLongitude: data.homeLongitude ?? null,
     birthday: data.birthday,
     socialLinks: data.socialLinks,
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
@@ -49,12 +51,21 @@ export async function getUser(uid: string): Promise<User | null> {
   }
 }
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  (Object.keys(obj) as (keyof T)[]).forEach((k) => {
+    const v = obj[k];
+    if (v !== undefined) out[k as string] = v;
+  });
+  return out;
+}
+
 export async function createUser(uid: string, input: UserCreateInput): Promise<void> {
   try {
     const db = getFirebaseDb();
     const ref = doc(db, USERS, uid);
     await setDoc(ref, {
-      ...input,
+      ...omitUndefined(input as unknown as Record<string, unknown>),
       createdAt: new Date(),
     });
     logger.info('Firestore', 'createUser success', { uid });
@@ -69,7 +80,8 @@ export async function updateUser(uid: string, updates: Partial<UserCreateInput>)
   const ref = doc(db, USERS, uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
-  await setDoc(ref, { ...snap.data(), ...updates }, { merge: true });
+  const cleaned = omitUndefined(updates as unknown as Record<string, unknown>);
+  await setDoc(ref, { ...snap.data(), ...cleaned }, { merge: true });
 }
 
 // Yearbooks

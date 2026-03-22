@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
@@ -70,10 +61,7 @@ export default function CreateYearbookScreen() {
   const showAiSection = isOpenAIConfigured();
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.flex}
-    >
+    <View style={styles.flex}>
       <Container scroll style={styles.content}>
         <BrandLogo size="sm" tagline="launch a signature yearbook" />
         <Text variant="titleLarge" style={styles.title}>
@@ -140,7 +128,7 @@ export default function CreateYearbookScreen() {
           style={styles.button}
         />
       </Container>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

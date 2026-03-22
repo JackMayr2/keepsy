@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrandBackground } from '@/src/design-system';
+import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
 
 export function AnimatedBlobBackground() {
-  return <BrandBackground preset="daydream" />;
+  return <ScreenBackground preset="daydream" />;
 }

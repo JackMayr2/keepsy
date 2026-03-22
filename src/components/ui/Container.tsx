@@ -1,10 +1,11 @@
 import React, { ReactNode } from 'react';
-import { View, StyleSheet, ViewStyle, ScrollView, StyleProp } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { standardScrollViewProps } from '@/src/design-system/constants/scroll';
-import { BrandBackground, type BrandBackgroundPreset } from '@/src/design-system';
+import type { BrandBackgroundPreset } from '@/src/design-system';
+import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
+import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 
 const DEFAULT_BOTTOM = 32;
 
@@ -47,21 +48,20 @@ export function Container({
     const scrollPaddingBottom = DEFAULT_BOTTOM + extraBottomPadding + insets.bottom;
     return (
       <View style={[containerStyle, style]}>
-        <BrandBackground preset={backgroundPreset} />
-        <ScrollView
+        <ScreenBackground preset={backgroundPreset} />
+        <AppKeyboardAwareScrollView
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom }]}
-          {...standardScrollViewProps}
         >
           <View style={[contentStyle, styles.scrollFill]}>{children}</View>
-        </ScrollView>
+        </AppKeyboardAwareScrollView>
       </View>
     );
   }
 
   return (
     <View style={[containerStyle, style]}>
-      <BrandBackground preset={backgroundPreset} />
+      <ScreenBackground preset={backgroundPreset} />
       <View style={[contentStyle, { paddingBottom: DEFAULT_BOTTOM + extraBottomPadding + insets.bottom }]}>
         {children}
       </View>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Image, ActivityIndicator, Linking } from 'react-native';
+import { View, StyleSheet, Image, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { getUser } from '@/src/services/firestore';
 import { Container, Text } from '@/src/components/ui';
@@ -66,6 +66,11 @@ export default function MemberProfileScreen() {
             {user.bio}
           </Text>
         ) : null}
+        {user.city ? (
+          <Text variant="body" color="secondary" style={styles.city}>
+            {user.city}
+          </Text>
+        ) : null}
       </View>
       {Object.keys(socialLinks).length > 0 ? (
         <View style={styles.section}>
@@ -107,6 +112,7 @@ const styles = StyleSheet.create({
   },
   name: { marginBottom: 8 },
   bio: { textAlign: 'center', paddingHorizontal: 24 },
+  city: { textAlign: 'center', marginTop: 8, paddingHorizontal: 24 },
   section: { marginTop: 16 },
   sectionTitle: { marginBottom: 8 },
   socialLink: { marginBottom: 6 },

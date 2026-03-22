@@ -21,6 +21,7 @@ import { uploadPromptImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
 import { DSIcon } from '@/src/design-system';
 import { Container, Text, Button, Input } from '@/src/components/ui';
+import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { Prompt, Draft } from '@/src/types/prompt.types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,6 +147,11 @@ export default function PromptsTab() {
             style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
             onPress={(e) => e.stopPropagation()}
           >
+            <AppKeyboardAwareScrollView
+              showsVerticalScrollIndicator={false}
+              extraScrollHeight={120}
+              contentContainerStyle={styles.modalScrollContent}
+            >
             <Text variant="title" style={styles.modalTitle}>
               {selected?.text}
             </Text>
@@ -215,6 +221,7 @@ export default function PromptsTab() {
                 icon={<DSIcon name={{ ios: 'paperplane.fill', android: 'send', web: 'send' }} size={16} color="#FFFFFF" />}
               />
             </View>
+            </AppKeyboardAwareScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -238,6 +245,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
+    flexGrow: 1,
   },
   modalTitle: { marginBottom: 16 },
   photoSection: { marginVertical: 8 },

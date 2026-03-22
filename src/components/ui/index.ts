@@ -8,3 +8,5 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 export { Container } from './Container';
 export type { ContainerProps } from './Container';
+export { PlaceAutocomplete } from './PlaceAutocomplete';
+export type { PlaceAutocompleteProps, ResolvedPlace } from './PlaceAutocomplete';

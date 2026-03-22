@@ -6,6 +6,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { createUser } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
 import { BrandLogo, Page, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
+import { PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 
 export default function WelcomeScreen() {
   const { userId } = useAuth();
@@ -13,6 +14,8 @@ export default function WelcomeScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [cityText, setCityText] = useState('');
+  const [homePlace, setHomePlace] = useState<ResolvedPlace | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleContinue = async () => {
@@ -24,6 +27,10 @@ export default function WelcomeScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
+        ...(cityText.trim() ? { city: cityText.trim() } : {}),
+        ...(homePlace
+          ? { homeLatitude: homePlace.latitude, homeLongitude: homePlace.longitude }
+          : {}),
       });
       setLoading(false);
       router.push('/(onboarding)/profile');
@@ -70,6 +77,14 @@ export default function WelcomeScreen() {
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
+          />
+          <PlaceAutocomplete
+            label="Home city (optional)"
+            placeholder="Search for your city"
+            value={cityText}
+            onChangeText={setCityText}
+            onResolvedPlaceChange={setHomePlace}
+            containerStyle={{ marginBottom: 4 }}
           />
         </YStack>
         <DSButton

@@ -197,7 +197,7 @@ export default function SettingsScreen() {
 
       <SectionHeader title="APPEARANCE" />
       <View style={[styles.section, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
-        <View style={styles.row}>
+        <View style={[styles.rowWrap, styles.row]}>
           <Text variant="body" style={styles.rowLabel}>
             Dark mode
           </Text>
