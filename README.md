@@ -5,10 +5,10 @@ Social yearbook app for sororities — built with Expo, React Native, and Fireba
 ## Setup
 
 1. Install dependencies: `npm install`
-2. Copy env example and add your keys:
+2. Copy `.env.example` to `.env` and add your keys:
 
 ```bash
-# Create .env or set in app.config.js extra:
+# In .env (see .env.example):
 EXPO_PUBLIC_FIREBASE_API_KEY=
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
 EXPO_PUBLIC_FIREBASE_PROJECT_ID=
@@ -19,6 +19,23 @@ EXPO_PUBLIC_FIREBASE_APP_ID=
 # Optional:
 EXPO_PUBLIC_OPENAI_API_KEY=   # AI yearbook cover + profile portraits (DALL·E)
 ```
+
+### OpenAI / “ChatGPT” API key (optional AI images)
+
+The app calls OpenAI’s **Images API** (DALL·E 2) from your device — not the ChatGPT website.
+
+1. Create or log in at [platform.openai.com](https://platform.openai.com).
+2. Go to **API keys** → **Create new secret key**. Copy it immediately (you won’t see it again).
+3. Under **Billing**, add a payment method and buy a small credit if prompted. **ChatGPT Plus** does *not* include API usage; the API is billed separately.
+4. In your project root, create `.env` (see `.env.example`) and set:
+   ```bash
+   EXPO_PUBLIC_OPENAI_API_KEY=sk-...
+   ```
+5. **Restart** the dev server (`Ctrl+C`, then `npx expo start`) so Expo picks up the new variable.
+
+Then on **Create yearbook** you’ll see **AI cover visual**: describe the cover, tap **Generate options**, pick one, and create the yearbook. You can also regenerate the cover in **Yearbook settings**, and use AI portraits on **Edit profile**.
+
+> **Security note:** `EXPO_PUBLIC_*` keys are embedded in the app bundle. Fine for local development; for production builds, prefer a small backend that holds the key and proxies image requests.
 
 City / place search uses [Photon](https://photon.komoot.io) (OpenStreetMap data); no API key required.
 

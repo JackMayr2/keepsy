@@ -70,7 +70,7 @@ export default function CreateYearbookScreen() {
   };
 
   const canCreate = name.trim();
-  const showAiSection = isOpenAIConfigured();
+  const openAiReady = isOpenAIConfigured();
 
   return (
     <View style={styles.flex}>
@@ -99,39 +99,54 @@ export default function CreateYearbookScreen() {
           placeholder="Select due date"
           minimumDate={minimumDueDate}
         />
-        {showAiSection && (
-          <View style={styles.aiSection}>
-            <Text variant="label" style={styles.aiLabel}>
-              AI cover visual (optional)
+        <View style={styles.aiSection}>
+          <Text variant="label" style={styles.aiLabel}>
+            AI cover visual (optional)
+          </Text>
+          {!openAiReady ? (
+            <Text variant="caption" color="secondary" style={styles.aiSetupHint}>
+              Add an OpenAI API key to enable AI cover art. Create `.env` in the project root with{' '}
+              <Text variant="caption" style={styles.mono}>
+                EXPO_PUBLIC_OPENAI_API_KEY=sk-…
+              </Text>
+              {' '}then restart Expo. See README → “OpenAI / ChatGPT API key” for step-by-step setup (platform.openai.com → API keys + billing).
             </Text>
-            <Input
-              value={aiPrompt}
-              onChangeText={setAiPrompt}
-              placeholder="Describe the cover image..."
-            />
-            <Button
-              title={generatedUrls.length ? 'Regenerate' : 'Generate options'}
-              variant="outline"
-              onPress={handleGenerate}
-              loading={generating}
-              icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
-              style={styles.genBtn}
-            />
-            {generatedUrls.length > 0 && (
-              <View style={styles.grid}>
-                {generatedUrls.map((url) => (
-                  <Pressable
-                    key={url}
-                    style={[styles.gridItem, selectedAiUrl === url && styles.gridItemSelected]}
-                    onPress={() => setSelectedAiUrl(url)}
-                  >
-                    <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
+          ) : (
+            <>
+              <Input
+                value={aiPrompt}
+                onChangeText={setAiPrompt}
+                placeholder="e.g. iridescent purple gradient, polaroid collage, sorority sisterhood vibes"
+                multiline
+              />
+              <Button
+                title={generatedUrls.length ? 'Regenerate' : 'Generate options'}
+                variant="outline"
+                onPress={handleGenerate}
+                loading={generating}
+                disabled={!aiPrompt.trim()}
+                icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
+                style={styles.genBtn}
+              />
+              {generatedUrls.length > 0 && (
+                <View style={styles.grid}>
+                  {generatedUrls.map((url) => (
+                    <Pressable
+                      key={url}
+                      style={[
+                        styles.gridItem,
+                        selectedAiUrl === url && { borderColor: theme.colors.primary },
+                      ]}
+                      onPress={() => setSelectedAiUrl(url)}
+                    >
+                      <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
         <Button
           title="Create"
           onPress={handleCreate}
@@ -151,6 +166,8 @@ const styles = StyleSheet.create({
   title: { marginBottom: 24 },
   aiSection: { marginTop: 16 },
   aiLabel: { marginBottom: 8 },
+  aiSetupHint: { lineHeight: 20 },
+  mono: { fontFamily: 'monospace' },
   genBtn: { marginTop: 8 },
   grid: {
     flexDirection: 'row',
@@ -165,9 +182,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
-  },
-  gridItemSelected: {
-    borderColor: '#8B5CF6',
   },
   gridImage: {
     width: '100%',

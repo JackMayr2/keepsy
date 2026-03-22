@@ -35,7 +35,11 @@ async function generateDalleImages(prompt: string, count: number = 4): Promise<s
 }
 
 export async function generateYearbookVisualOptions(prompt: string, count: number = 4): Promise<string[]> {
-  return generateDalleImages(prompt, count);
+  const styled = `Bold, polished yearbook or memory-book cover illustration, eye-catching composition, suitable as a digital yearbook hero image, no small illegible text unless the user explicitly asked for specific words: ${prompt}`.slice(
+    0,
+    1000
+  );
+  return generateDalleImages(styled, count);
 }
 
 /**

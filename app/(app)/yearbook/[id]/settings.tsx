@@ -21,7 +21,7 @@ export default function YearbookSettingsScreen() {
   const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
   const [selectedAiUrl, setSelectedAiUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const showAi = isOpenAIConfigured();
+  const openAiReady = isOpenAIConfigured();
 
   const minimumDueDate = useMemo(() => {
     const d = new Date();
@@ -101,44 +101,59 @@ export default function YearbookSettingsScreen() {
         minimumDate={minimumDueDate}
       />
 
-      {showAi ? (
-        <View style={styles.aiSection}>
-          <Text variant="title" style={styles.sectionTitle}>
-            Yearbook cover image
+      <View style={styles.aiSection}>
+        <Text variant="title" style={styles.sectionTitle}>
+          Yearbook cover image
+        </Text>
+        {selectedAiUrl ? (
+          <Image source={{ uri: selectedAiUrl }} style={styles.currentCover} resizeMode="cover" />
+        ) : null}
+        {!openAiReady ? (
+          <Text variant="caption" color="secondary" style={styles.aiSetupHint}>
+            Add{' '}
+            <Text variant="caption" style={styles.mono}>
+              EXPO_PUBLIC_OPENAI_API_KEY
+            </Text>{' '}
+            to `.env` and restart Expo to generate AI covers. See README for OpenAI setup.
           </Text>
-          {selectedAiUrl ? (
-            <Image source={{ uri: selectedAiUrl }} style={styles.currentCover} resizeMode="cover" />
-          ) : null}
-          <Input
-            label="Describe the cover"
-            value={aiPrompt}
-            onChangeText={setAiPrompt}
-            placeholder="e.g. Sorority house at sunset, polaroid style"
-            containerStyle={styles.inputTight}
-          />
-          <Button
-            title={generatedUrls.length ? 'Regenerate options' : 'Generate options'}
-            variant="outline"
-            onPress={handleGenerateCover}
-            loading={generating}
-            icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
-            style={styles.genBtn}
-          />
-          {generatedUrls.length > 0 ? (
-            <View style={styles.grid}>
-              {generatedUrls.map((url) => (
-                <Pressable
-                  key={url}
-                  style={[styles.gridItem, selectedAiUrl === url && styles.gridItemSelected]}
-                  onPress={() => setSelectedAiUrl(url)}
-                >
-                  <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+        ) : (
+          <>
+            <Input
+              label="Describe the cover"
+              value={aiPrompt}
+              onChangeText={setAiPrompt}
+              placeholder="e.g. Sorority house at sunset, polaroid style"
+              multiline
+              containerStyle={styles.inputTight}
+            />
+            <Button
+              title={generatedUrls.length ? 'Regenerate options' : 'Generate options'}
+              variant="outline"
+              onPress={handleGenerateCover}
+              loading={generating}
+              disabled={!aiPrompt.trim()}
+              icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
+              style={styles.genBtn}
+            />
+            {generatedUrls.length > 0 ? (
+              <View style={styles.grid}>
+                {generatedUrls.map((url) => (
+                  <Pressable
+                    key={url}
+                    style={[
+                      styles.gridItem,
+                      selectedAiUrl === url && { borderColor: theme.colors.primary },
+                    ]}
+                    onPress={() => setSelectedAiUrl(url)}
+                  >
+                    <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </>
+        )}
+      </View>
 
       <Button
         title="Save changes"
@@ -159,6 +174,8 @@ const styles = StyleSheet.create({
   saveBtn: { marginTop: 16 },
   hint: { marginTop: 24 },
   aiSection: { marginTop: 8 },
+  aiSetupHint: { lineHeight: 20, marginBottom: 8 },
+  mono: { fontFamily: 'monospace' },
   currentCover: {
     width: '100%',
     height: 140,
@@ -180,9 +197,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
-  },
-  gridItemSelected: {
-    borderColor: '#8B5CF6',
   },
   gridImage: {
     width: '100%',
