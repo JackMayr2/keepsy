@@ -27,6 +27,8 @@ export { SafeAreaTabBar } from './components/SafeAreaTabBar';
 export { BrandBackground } from './components/BrandBackground';
 export type { BrandBackgroundPreset } from './components/BrandBackground';
 export { BrandLogo } from './components/BrandLogo';
+export { KEEPSY_LOGO_IMAGE } from './keepsyLogoAsset';
+export { KeepsyBookLoader } from './components/KeepsyBookLoader';
 export { FloatingKeepsyIcon } from './components/FloatingKeepsyIcon';
 export { standardScrollViewProps, standardFlatListScrollProps } from './constants/scroll';
 export { TAB_BAR_CONTENT_HEIGHT, TAB_BAR_PADDING_TOP } from './constants/tabBar';

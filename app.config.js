@@ -4,11 +4,11 @@ export default {
     slug: 'keepsy',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: './assets/images/keepsy-logo-official.png',
     scheme: 'yearbook',
     userInterfaceStyle: 'automatic',
     splash: {
-      image: './assets/images/splash-icon.png',
+      image: './assets/images/keepsy-logo-official.png',
       resizeMode: 'contain',
       backgroundColor: '#000000',
     },
@@ -28,7 +28,7 @@ export default {
     web: {
       bundler: 'metro',
       output: 'static',
-      favicon: './assets/images/favicon.png',
+      favicon: './assets/images/keepsy-logo-official.png',
     },
     plugins: [
       'expo-router',

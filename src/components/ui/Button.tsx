@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  ViewStyle,
-  StyleProp,
-  ActivityIndicator,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, ViewStyle, StyleProp, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { KeepsyBookLoader } from '@/src/design-system';
 import { Text } from './Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
@@ -65,10 +59,7 @@ export function Button({
   const content = (
     <View style={[styles.content, iconOnly && styles.contentIconOnly]}>
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === 'primary' ? '#fff' : colors.primary}
-        />
+        <KeepsyBookLoader size={compact ? 24 : 28} />
       ) : (
         iconOnly ? (
           icon

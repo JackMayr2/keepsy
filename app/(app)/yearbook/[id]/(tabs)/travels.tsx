@@ -5,7 +5,6 @@ import {
   FlatList,
   Modal,
   Pressable,
-  ActivityIndicator,
   Image,
   Alert,
   Platform,
@@ -21,7 +20,7 @@ import { getTravels, createTravel, getYearbookMembers, getUser, type Travel } fr
 import { uploadTravelImage } from '@/src/services/storage';
 import { getLocationFromImageAsset } from '@/src/utils/imageLocation';
 import { logger } from '@/src/utils/logger';
-import { DSIcon } from '@/src/design-system';
+import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
 import { Container, Text, Button, Input, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 import { MapProfileMarker, initialsFromName } from '@/src/components/maps/MapProfileMarker';
@@ -272,7 +271,9 @@ export default function TravelsTab() {
   if (loading) {
     return (
       <Container>
-        <ActivityIndicator size="large" style={styles.loader} />
+        <View style={styles.loaderWrap}>
+          <KeepsyBookLoader size={52} />
+        </View>
       </Container>
     );
   }
@@ -641,7 +642,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  loader: { marginTop: 24 },
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   webMapOverlay: {
     justifyContent: 'center',
     alignItems: 'center',

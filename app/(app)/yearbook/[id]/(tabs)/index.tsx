@@ -4,7 +4,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  ActivityIndicator,
   Image,
   RefreshControl,
 } from 'react-native';
@@ -15,7 +14,7 @@ import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { getYearbookMembers, getUser } from '@/src/services/firestore';
 import { Container, Text } from '@/src/components/ui';
-import { DSIcon, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
+import { DSIcon, KeepsyBookLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { YearbookMember } from '@/src/types/yearbook.types';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
@@ -75,7 +74,9 @@ export default function MembersTab() {
   if (loading) {
     return (
       <Container>
-        <ActivityIndicator size="large" style={styles.loader} />
+        <View style={styles.loaderWrap}>
+          <KeepsyBookLoader size={52} />
+        </View>
       </Container>
     );
   }
@@ -150,7 +151,7 @@ export default function MembersTab() {
 }
 
 const styles = StyleSheet.create({
-  loader: { marginTop: 24 },
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   empty: { marginTop: 24, textAlign: 'center' },
   list: {},
   row: {

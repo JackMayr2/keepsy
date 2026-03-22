@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Alert,
-  Pressable,
-  Switch,
-  ActivityIndicator,
-  Image,
-} from 'react-native';
+import { View, StyleSheet, Alert, Pressable, Switch, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { getUser } from '@/src/services/firestore';
-import { DSIcon } from '@/src/design-system';
+import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
 import { Container, Text, Button } from '@/src/components/ui';
 
 function SettingsRow({
@@ -151,8 +143,8 @@ export default function SettingsScreen() {
       <SectionHeader title="ACCOUNT" />
       <View style={[styles.section, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
         {loadingUser ? (
-          <View style={styles.rowWrap}>
-            <ActivityIndicator size="small" />
+          <View style={[styles.rowWrap, styles.accountLoading]}>
+            <KeepsyBookLoader size={36} />
           </View>
         ) : (
           <>
@@ -264,6 +256,11 @@ const styles = StyleSheet.create({
   rowWrap: {
     paddingVertical: 14,
     paddingHorizontal: 16,
+  },
+  accountLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
   rowBorder: {
     borderTopWidth: 1,

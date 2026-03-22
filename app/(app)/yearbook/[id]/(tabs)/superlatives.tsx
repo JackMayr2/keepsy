@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  ActivityIndicator,
-  Pressable,
-  Modal,
-  FlatList,
-  Image,
-} from 'react-native';
+import { View, StyleSheet, Pressable, Modal, FlatList, Image } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -22,7 +14,7 @@ import {
 } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
 import { Container, Text, Button } from '@/src/components/ui';
-import { DSIcon, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
+import { DSIcon, KeepsyBookLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { YearbookMember } from '@/src/types/yearbook.types';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
@@ -119,7 +111,9 @@ export default function SuperlativesTab() {
   if (loading) {
     return (
       <Container>
-        <ActivityIndicator size="large" style={styles.loader} />
+        <View style={styles.loaderWrap}>
+          <KeepsyBookLoader size={52} />
+        </View>
       </Container>
     );
   }
@@ -241,7 +235,7 @@ export default function SuperlativesTab() {
 
 const styles = StyleSheet.create({
   list: {},
-  loader: { marginTop: 24 },
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   row: {
     paddingVertical: 16,
     paddingHorizontal: 4,

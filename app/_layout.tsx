@@ -5,13 +5,14 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from '@/src/contexts/ThemeContext';
 import { TamaguiProvider } from 'tamagui';
-import { config } from '@/src/design-system';
+import { config, KeepsyBookLoader } from '@/src/design-system';
 import { logger } from '@/src/utils/logger';
 
 const JOIN_PREFIX = 'yearbook://join/';
@@ -26,16 +27,20 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { authState } = useAuth();
+  const { theme } = useTheme();
   const segments = useSegments();
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
 
   logger.debug('Nav', 'authState', { authState, segment0: segments[0] });
 
   if (authState === 'loading') {
-    return null;
+    return (
+      <View
+        style={[styles.bootLoader, { backgroundColor: theme.colors.background }]}
+        accessibilityLabel="Signing in"
+      >
+        <KeepsyBookLoader size={64} />
+      </View>
+    );
   }
 
   const inAuthGroup = segments[0] === '(auth)';
@@ -64,33 +69,59 @@ function RootLayoutNav() {
   );
 }
 
+function FontsAndApp({ loaded, error }: { loaded: boolean; error: Error | null }) {
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return (
+      <View style={[styles.bootLoader, { backgroundColor: theme.colors.background }]}>
+        <KeepsyBookLoader size={64} />
+      </View>
+    );
+  }
+
+  return (
+    <TamaguiProviderWrapper>
+      <AuthProvider>
+        <DeepLinkHandler />
+        <RootLayoutNav />
+      </AuthProvider>
+    </TamaguiProviderWrapper>
+  );
+}
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...MaterialIcons.font,
   });
 
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  if (!loaded) {
-    return null;
-  }
-
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <TamaguiProviderWrapper>
-          <AuthProvider>
-            <DeepLinkHandler />
-            <RootLayoutNav />
-          </AuthProvider>
-        </TamaguiProviderWrapper>
+        <FontsAndApp loaded={loaded} error={error} />
       </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  bootLoader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 function TamaguiProviderWrapper({ children }: { children: React.ReactNode }) {
   const { colorScheme } = useTheme();

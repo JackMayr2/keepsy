@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Image, PanResponder, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { KEEPSY_LOGO_IMAGE } from '../keepsyLogoAsset';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -68,11 +69,7 @@ export function FloatingKeepsyIcon() {
       accessibilityRole="button"
       accessibilityLabel="Open settings"
     >
-      <Image
-        source={require('../../../assets/images/icon.png')}
-        style={styles.icon}
-        resizeMode="contain"
-      />
+      <Image source={KEEPSY_LOGO_IMAGE} style={styles.icon} resizeMode="cover" />
     </View>
   );
 }

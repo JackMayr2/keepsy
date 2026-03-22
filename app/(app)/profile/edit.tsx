@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -15,7 +14,7 @@ import { uploadProfileImage } from '@/src/services/storage';
 import { generateProfileAvatarOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { DSIcon } from '@/src/design-system';
+import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
 import {
   Container,
   Button,
@@ -184,7 +183,7 @@ export default function EditProfileScreen() {
     return (
       <Container>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" />
+          <KeepsyBookLoader size={52} />
         </View>
       </Container>
     );
@@ -212,7 +211,7 @@ export default function EditProfileScreen() {
           )}
           {uploadingPhoto && (
             <View style={styles.avatarOverlay}>
-              <ActivityIndicator size="small" color="#fff" />
+              <KeepsyBookLoader size={32} />
             </View>
           )}
         </Pressable>

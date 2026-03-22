@@ -6,7 +6,15 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { useYearbooks } from '@/src/hooks/useYearbooks';
 import { leaveYearbook } from '@/src/services/firestore';
-import { Page, DSButton, DSIcon, DSText, EmptyState, FloatingKeepsyIcon, SkeletonBlock } from '@/src/design-system';
+import {
+  Page,
+  DSButton,
+  DSIcon,
+  DSText,
+  EmptyState,
+  FloatingKeepsyIcon,
+  KeepsyBookLoader,
+} from '@/src/design-system';
 import { YearbookCard } from '@/src/components/YearbookCard';
 
 export default function HomeScreen() {
@@ -45,11 +53,8 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <Page flex={1}>
-        <YStack paddingTop="$4" gap="$4">
-          <SkeletonBlock lines={4} padding="$5" borderRadius={20} backgroundColor="$backgroundStrong" />
-          <SkeletonBlock lines={4} padding="$5" borderRadius={20} backgroundColor="$backgroundStrong" />
-        </YStack>
+      <Page flex={1} justifyContent="center" alignItems="center">
+        <KeepsyBookLoader size={56} />
       </Page>
     );
   }

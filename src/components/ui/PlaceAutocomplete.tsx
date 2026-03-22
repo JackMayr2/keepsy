@@ -5,11 +5,11 @@ import {
   TextInput,
   FlatList,
   Pressable,
-  ActivityIndicator,
   Keyboard,
   ViewStyle,
 } from 'react-native';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { KeepsyBookLoader } from '@/src/design-system';
 import { searchPlaces, type PlaceSuggestion } from '@/src/services/placesSearch';
 import { Text } from './Text';
 
@@ -178,7 +178,7 @@ export function PlaceAutocomplete({
         >
           {loading ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <KeepsyBookLoader size={28} />
             </View>
           ) : (
             <FlatList

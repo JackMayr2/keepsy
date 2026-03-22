@@ -1,9 +1,10 @@
 import React from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { Button as TamaguiButton, Spinner, Text, XStack } from 'tamagui';
+import { Button as TamaguiButton, Text, XStack } from 'tamagui';
 import type { GetProps } from 'tamagui';
 import { useTheme as useAppTheme } from '@/src/contexts/ThemeContext';
 import { useHaptic } from '../hooks/useHaptic';
+import { KeepsyBookLoader } from './KeepsyBookLoader';
 
 const AnimatedButton = Animated.createAnimatedComponent(TamaguiButton);
 
@@ -105,7 +106,7 @@ export function DSButton({
       {...rest}
     >
       {loading ? (
-        <Spinner size="small" color={variant === 'primary' ? 'white' : theme.colors.text} />
+        <KeepsyBookLoader size={compact ? 24 : 28} />
       ) : (
         <XStack width="100%" alignItems="center" justifyContent="center" gap="$2">
           {iconOnly ? (

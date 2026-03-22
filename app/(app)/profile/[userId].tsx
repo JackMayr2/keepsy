@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Image,
-  ActivityIndicator,
-  Linking,
-  Pressable,
-} from 'react-native';
+import { View, StyleSheet, Image, Linking, Pressable } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { getUser } from '@/src/services/firestore';
 import { Container, Text, SocialPlatformIcon } from '@/src/components/ui';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { KeepsyBookLoader } from '@/src/design-system';
 import { resolveSocialUrl, socialLinkDisplayText } from '@/src/utils/socialLinks';
 
 const SOCIAL_LABELS: Record<string, string> = {
@@ -36,7 +30,9 @@ export default function MemberProfileScreen() {
   if (loading) {
     return (
       <Container>
-        <ActivityIndicator size="large" style={styles.loader} />
+        <View style={styles.loaderWrap}>
+          <KeepsyBookLoader size={52} />
+        </View>
       </Container>
     );
   }
@@ -128,7 +124,7 @@ export default function MemberProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  loader: { marginTop: 24 },
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   header: { alignItems: 'center', marginBottom: 24 },
   avatar: { width: 96, height: 96, borderRadius: 48, marginBottom: 12 },
   avatarPlaceholder: {
