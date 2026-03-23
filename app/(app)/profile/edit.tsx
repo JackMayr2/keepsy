@@ -14,7 +14,7 @@ import { uploadProfileImage } from '@/src/services/storage';
 import { generateProfileAvatarOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
 import {
   Container,
   Button,
@@ -182,15 +182,16 @@ export default function EditProfileScreen() {
   if (loadingProfile) {
     return (
       <Container>
-        <View style={styles.centered}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
 
+  const profileBusy = generatingAvatar || uploadingPhoto || loading;
+
   return (
     <Container scroll>
+      <DeferredFullscreenLoader active={profileBusy} />
       <View style={styles.avatarSection}>
         <Pressable
           onPress={pickProfileImage}
@@ -347,7 +348,6 @@ const styles = StyleSheet.create({
   hint: { marginBottom: 24 },
   input: { marginBottom: 16 },
   button: { marginTop: 24 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   avatarSection: {
     alignItems: 'center',
     marginBottom: 24,

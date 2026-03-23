@@ -3,10 +3,12 @@ import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbook } from '@/src/hooks/useYearbook';
 import { updateYearbook } from '@/src/services/firestore';
+import { uploadYearbookCoverFromRemoteUrl } from '@/src/services/storage';
+import { shouldRehostYearbookCoverUrl } from '@/src/utils/yearbookCoverUrl';
 import { generateYearbookVisualOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { DSIcon } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Text, Button, Input, DatePickerField } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
@@ -60,11 +62,25 @@ export default function YearbookSettingsScreen() {
     if (!id) return;
     setSaving(true);
     try {
+      let visual: string | null = selectedAiUrl ?? null;
+      if (visual && shouldRehostYearbookCoverUrl(visual)) {
+        try {
+          visual = await uploadYearbookCoverFromRemoteUrl(id, visual);
+        } catch (persistErr) {
+          logger.error('YearbookSettings', 'Cover upload to Storage failed', persistErr);
+          Alert.alert(
+            'Cover not updated',
+            'We couldn’t upload that image to storage, so your previous cover is unchanged. Please try again.'
+          );
+          visual = yearbook?.aiVisualUrl ?? null;
+        }
+      }
       await updateYearbook(id, {
         description: description.trim() || undefined,
         dueDate: dueDate.trim() || undefined,
-        aiVisualUrl: selectedAiUrl ?? null,
+        aiVisualUrl: visual,
       });
+      setSelectedAiUrl(visual);
       refresh();
     } finally {
       setSaving(false);
@@ -74,15 +90,16 @@ export default function YearbookSettingsScreen() {
   if (loading || !yearbook) {
     return (
       <Container>
-        <Text variant="body" color="secondary">
-          Loading…
-        </Text>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
 
+  const settingsBusy = generating || saving;
+
   return (
     <Container scroll>
+      <DeferredFullscreenLoader active={settingsBusy} />
       <Text variant="title" style={styles.sectionTitle}>
         Details
       </Text>

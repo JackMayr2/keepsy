@@ -14,7 +14,12 @@ import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { getYearbookMembers, getUser } from '@/src/services/firestore';
 import { Container, Text } from '@/src/components/ui';
-import { DSIcon, KeepsyBookLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
+import {
+  DSIcon,
+  DeferredFullscreenLoader,
+  standardFlatListScrollProps,
+  TAB_BAR_CONTENT_HEIGHT,
+} from '@/src/design-system';
 import type { YearbookMember } from '@/src/types/yearbook.types';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
@@ -74,9 +79,7 @@ export default function MembersTab() {
   if (loading) {
     return (
       <Container>
-        <View style={styles.loaderWrap}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
@@ -93,6 +96,7 @@ export default function MembersTab() {
 
   return (
     <Container>
+      <DeferredFullscreenLoader active={refreshing} />
       <FlatList
         data={members}
         keyExtractor={(m) => m.id}
@@ -151,7 +155,6 @@ export default function MembersTab() {
 }
 
 const styles = StyleSheet.create({
-  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   empty: { marginTop: 24, textAlign: 'center' },
   list: {},
   row: {

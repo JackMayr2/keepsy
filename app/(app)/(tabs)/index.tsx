@@ -13,7 +13,7 @@ import {
   DSText,
   EmptyState,
   FloatingKeepsyIcon,
-  KeepsyBookLoader,
+  DeferredFullscreenLoader,
 } from '@/src/design-system';
 import { YearbookCard } from '@/src/components/YearbookCard';
 
@@ -53,8 +53,8 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <Page flex={1} justifyContent="center" alignItems="center">
-        <KeepsyBookLoader size={56} />
+      <Page flex={1}>
+        <DeferredFullscreenLoader active />
       </Page>
     );
   }

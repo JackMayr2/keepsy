@@ -5,7 +5,15 @@ import { YStack } from 'tamagui';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { createUser } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
-import { BrandLogo, Page, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
+import {
+  BrandLogo,
+  Page,
+  DSButton,
+  DSIcon,
+  DSText,
+  DSInput,
+  DeferredFullscreenLoader,
+} from '@/src/design-system';
 import { PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 
 export default function WelcomeScreen() {
@@ -48,6 +56,7 @@ export default function WelcomeScreen() {
       style={{ flex: 1 }}
     >
       <Page scroll paddingTop={52} paddingHorizontal={28}>
+        <DeferredFullscreenLoader active={loading} />
         <BrandLogo size="sm" tagline="start your chapter" />
         <DSText variant="titleLarge" marginBottom="$2" letterSpacing={-0.4}>
           Welcome to Keepsy

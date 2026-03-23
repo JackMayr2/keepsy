@@ -5,7 +5,7 @@ import { verifyCode } from '@/src/services/auth';
 import { logger } from '@/src/utils/logger';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { AnimatedBlobBackground } from '@/src/components/AnimatedBlobBackground';
-import { BrandLogo, DSIcon } from '@/src/design-system';
+import { BrandLogo, DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Button, Text } from '@/src/components/ui';
 
 const CODE_LENGTH = 6;
@@ -57,6 +57,7 @@ export default function VerifyScreen() {
         style={styles.flex}
       >
         <Container style={styles.content}>
+          <DeferredFullscreenLoader active={loading} />
           <BrandLogo size="sm" tagline="verify your invite" />
           <Text variant="titleLarge" style={styles.title}>
             Enter the code

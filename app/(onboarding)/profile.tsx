@@ -5,7 +5,15 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { updateUser } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
-import { BrandLogo, Page, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
+import {
+  BrandLogo,
+  Page,
+  DSButton,
+  DSIcon,
+  DSText,
+  DSInput,
+  DeferredFullscreenLoader,
+} from '@/src/design-system';
 
 export default function ProfileOnboardingScreen() {
   const { userId, refreshAuthState } = useAuth();
@@ -35,6 +43,7 @@ export default function ProfileOnboardingScreen() {
 
   return (
     <Page scroll paddingTop={48} paddingHorizontal={24}>
+      <DeferredFullscreenLoader active={loading} />
       <BrandLogo size="sm" tagline="make it feel like you" />
       <DSText variant="titleLarge" marginBottom="$2">
         Complete your profile

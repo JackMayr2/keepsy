@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { joinYearbookByCode } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
-import { BrandLogo, DSIcon } from '@/src/design-system';
+import { BrandLogo, DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Button, Input, Text } from '@/src/components/ui';
 
 export default function JoinYearbookScreen() {
@@ -44,6 +44,7 @@ export default function JoinYearbookScreen() {
 
   return (
     <Container style={[styles.content, { paddingBottom: insets.bottom }]}>
+      <DeferredFullscreenLoader active={loading} />
       <BrandLogo size="sm" tagline="step into the circle" />
       <Text variant="titleLarge" style={styles.title}>
         Join yearbook

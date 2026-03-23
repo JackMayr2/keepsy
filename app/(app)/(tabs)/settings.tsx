@@ -6,7 +6,7 @@ import * as Linking from 'expo-linking';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { getUser } from '@/src/services/firestore';
-import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Text, Button } from '@/src/components/ui';
 
 function SettingsRow({
@@ -136,17 +136,14 @@ export default function SettingsScreen() {
 
   return (
     <Container scroll>
+      <DeferredFullscreenLoader active={loadingUser} />
       <Text variant="titleLarge" style={styles.title}>
         Settings
       </Text>
 
       <SectionHeader title="ACCOUNT" />
       <View style={[styles.section, { backgroundColor: theme.colors.surface, borderRadius: theme.radii.xl }]}>
-        {loadingUser ? (
-          <View style={[styles.rowWrap, styles.accountLoading]}>
-            <KeepsyBookLoader size={36} />
-          </View>
-        ) : (
+        {!loadingUser ? (
           <>
             <Pressable
               onPress={() => router.push('/(app)/profile/edit')}
@@ -184,6 +181,8 @@ export default function SettingsScreen() {
               </View>
             ) : null}
           </>
+        ) : (
+          <View style={[styles.rowWrap, styles.accountLoading]} />
         )}
       </View>
 
@@ -258,9 +257,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   accountLoading: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
+    minHeight: 72,
   },
   rowBorder: {
     borderTopWidth: 1,

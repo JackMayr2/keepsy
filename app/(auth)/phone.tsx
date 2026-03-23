@@ -7,7 +7,7 @@ import { getFirebase } from '@/src/config/firebase';
 import { sendPhoneCode } from '@/src/services/auth';
 import { logger } from '@/src/utils/logger';
 import { AnimatedBlobBackground } from '@/src/components/AnimatedBlobBackground';
-import { BrandLogo, DSButton, DSIcon, DSText, DSInput } from '@/src/design-system';
+import { BrandLogo, DSButton, DSIcon, DSText, DSInput, DeferredFullscreenLoader } from '@/src/design-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_COUNTRY = '+1';
@@ -52,6 +52,7 @@ export default function PhoneScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={[styles.flex, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
       >
+        <DeferredFullscreenLoader active={loading} />
         <YStack flex={1} justifyContent="center" paddingHorizontal={28} paddingBottom={40}>
           <BrandLogo
             size="md"

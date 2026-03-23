@@ -3,11 +3,13 @@ import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { createYearbook } from '@/src/services/firestore';
+import { createYearbook, updateYearbook } from '@/src/services/firestore';
+import { uploadYearbookCoverFromRemoteUrl } from '@/src/services/storage';
+import { shouldRehostYearbookCoverUrl } from '@/src/utils/yearbookCoverUrl';
 import { generateYearbookVisualOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { BrandLogo, DSIcon } from '@/src/design-system';
+import { BrandLogo, DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Button, Input, Text, DatePickerField } from '@/src/components/ui';
 import { addMonths, toISODateString } from '@/src/utils/dateFormat';
 
@@ -54,12 +56,28 @@ export default function CreateYearbookScreen() {
     if (!name.trim() || !userId) return;
     setLoading(true);
     try {
+      // Never write ephemeral OpenAI URLs to Firestore — upload to Storage first, then save the stable URL.
       const id = await createYearbook(userId, {
         name: name.trim(),
         description: description.trim() || undefined,
         dueDate: dueDate.trim() ? dueDate.trim() : undefined,
-        aiVisualUrl: selectedAiUrl ?? undefined,
+        aiVisualUrl: null,
       });
+      if (selectedAiUrl) {
+        try {
+          let permanent = selectedAiUrl;
+          if (shouldRehostYearbookCoverUrl(selectedAiUrl)) {
+            permanent = await uploadYearbookCoverFromRemoteUrl(id, selectedAiUrl);
+          }
+          await updateYearbook(id, { aiVisualUrl: permanent });
+        } catch (persistErr) {
+          logger.error('CreateYearbook', 'Could not persist AI cover to Storage', persistErr);
+          Alert.alert(
+            'Yearbook created',
+            'We couldn’t save your AI cover to storage (links from the generator expire). Open yearbook settings to generate or set a cover again.'
+          );
+        }
+      }
       setLoading(false);
       router.replace({ pathname: '/(app)/yearbook/[id]', params: { id } });
     } catch (e) {
@@ -71,9 +89,11 @@ export default function CreateYearbookScreen() {
 
   const canCreate = name.trim();
   const openAiReady = isOpenAIConfigured();
+  const createBusy = generating || loading;
 
   return (
     <View style={styles.flex}>
+      <DeferredFullscreenLoader active={createBusy} />
       <Container scroll style={styles.content}>
         <BrandLogo size="sm" tagline="launch a signature yearbook" />
         <Text variant="titleLarge" style={styles.title}>

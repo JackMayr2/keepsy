@@ -18,7 +18,7 @@ import { usePrompts } from '@/src/hooks/usePrompts';
 import { saveDraft, getSubmissionsForPrompt } from '@/src/services/firestore';
 import { uploadPromptImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
-import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
 import { Container, Text, Button, Input } from '@/src/components/ui';
 import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
@@ -114,15 +114,16 @@ export default function PromptsTab() {
   if (loading) {
     return (
       <Container>
-        <View style={styles.loaderWrap}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
 
+  const asyncBusy = saving || loadingSubmissions;
+
   return (
     <Container>
+      <DeferredFullscreenLoader active={asyncBusy} />
       <FlatList
         data={prompts}
         keyExtractor={(p) => p.id}
@@ -236,7 +237,6 @@ export default function PromptsTab() {
 
 const styles = StyleSheet.create({
   list: {},
-  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   promptRow: {
     paddingVertical: 16,
     borderBottomWidth: 1,

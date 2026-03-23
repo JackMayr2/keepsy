@@ -14,7 +14,7 @@ import {
 } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
 import { Container, Text } from '@/src/components/ui';
-import { DSIcon, KeepsyBookLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 const LIST_PADDING_BASE = 24;
@@ -92,9 +92,7 @@ export default function PollsTab() {
   if (loading) {
     return (
       <Container>
-        <View style={styles.loaderWrap}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
@@ -171,7 +169,6 @@ export default function PollsTab() {
 
 const styles = StyleSheet.create({
   list: {},
-  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   poll: { marginBottom: 24 },
   question: { marginBottom: 12 },
   option: {

@@ -35,6 +35,8 @@ The app calls OpenAI’s **Images API** (DALL·E 2) from your device — not the
 
 Then on **Create yearbook** you’ll see **AI cover visual**: describe the cover, tap **Generate options**, pick one, and create the yearbook. You can also regenerate the cover in **Yearbook settings**, and use AI portraits on **Edit profile**.
 
+**AI images & Firestore:** OpenAI image links expire quickly. The app only stores **Firebase Storage download URLs** in Firestore (binary files live in **Storage**, not Firestore). **Covers:** after create or settings save, the image is downloaded and uploaded to `yearbooks/{id}/cover.jpg` before the document is updated with a stable URL. **Profile AI portraits:** choosing an option uploads to `users/{uid}/avatar.jpg` and saves that URL on the user doc. Older yearbooks that still have a raw OpenAI URL may show a placeholder until you **regenerate and save** the cover once.
+
 > **Security note:** `EXPO_PUBLIC_*` keys are embedded in the app bundle. Fine for local development; for production builds, prefer a small backend that holds the key and proxies image requests.
 
 City / place search uses [Photon](https://photon.komoot.io) (OpenStreetMap data); no API key required.
@@ -56,3 +58,7 @@ City / place search uses [Photon](https://photon.komoot.io) (OpenStreetMap data)
 - Optional AI images (OpenAI): yearbook cover (create + settings), yearbook-style profile portraits (edit profile)
 - Calendar due date picker on create / yearbook settings (defaults to ~1 month out on create)
 - Yearbook settings (description, due date, cover image, invite code)
+- **`KeepsyBookLoader`** — **Lottie** book animation (`assets/lottie/book-with-turning-pages.json`), original colors; `size`, optional **`accessibilityLabel`** (no on-screen caption). Respects **Reduce Motion**.
+- **`LoadingState`** — primitive loader: **`fill`** = full-window `Modal` + dim + large Lottie **only** (no visible title/message; optional `title` / `message` / `accessibilityLabel` are for screen readers only). Prefer **`DeferredFullscreenLoader`** in UI.
+- **`DeferredFullscreenLoader`** — same as above after **`DEFERRED_LOADING_DELAY_MS` (500ms)**. Props: `active`, optional **`accessibilityLabel`** (VoiceOver), `delayMs`, `size`, `dimBackground`.
+- **`useDeferredLoading(active, delayMs?)`** — hook if you need the delayed boolean without the overlay component.

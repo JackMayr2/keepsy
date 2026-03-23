@@ -12,7 +12,7 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from '@/src/contexts/ThemeContext';
 import { TamaguiProvider } from 'tamagui';
-import { config, KeepsyBookLoader } from '@/src/design-system';
+import { config, DeferredFullscreenLoader } from '@/src/design-system';
 import { logger } from '@/src/utils/logger';
 
 const JOIN_PREFIX = 'yearbook://join/';
@@ -38,7 +38,7 @@ function RootLayoutNav() {
         style={[styles.bootLoader, { backgroundColor: theme.colors.background }]}
         accessibilityLabel="Signing in"
       >
-        <KeepsyBookLoader size={64} />
+        <DeferredFullscreenLoader active accessibilityLabel="Signing in" />
       </View>
     );
   }
@@ -85,7 +85,7 @@ function FontsAndApp({ loaded, error }: { loaded: boolean; error: Error | null }
   if (!loaded) {
     return (
       <View style={[styles.bootLoader, { backgroundColor: theme.colors.background }]}>
-        <KeepsyBookLoader size={64} />
+        <DeferredFullscreenLoader active accessibilityLabel="Loading Keepsy" />
       </View>
     );
   }

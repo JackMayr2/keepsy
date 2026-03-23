@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, Pressable, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -21,6 +21,11 @@ export function YearbookCard({ yearbook, onLeave }: YearbookCardProps) {
   const router = useRouter();
   const initial = yearbook.name.charAt(0).toUpperCase();
   const scale = useSharedValue(1);
+  const [coverError, setCoverError] = useState(false);
+
+  useEffect(() => {
+    setCoverError(false);
+  }, [yearbook.id, yearbook.aiVisualUrl]);
 
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -38,8 +43,13 @@ export function YearbookCard({ yearbook, onLeave }: YearbookCardProps) {
       <Animated.View style={animatedStyle}>
         <View style={styles.cardInner}>
       <View style={styles.visualContainer}>
-        {yearbook.aiVisualUrl ? (
-          <Image source={{ uri: yearbook.aiVisualUrl }} style={styles.visual} resizeMode="cover" />
+        {yearbook.aiVisualUrl && !coverError ? (
+          <Image
+            source={{ uri: yearbook.aiVisualUrl }}
+            style={styles.visual}
+            resizeMode="cover"
+            onError={() => setCoverError(true)}
+          />
         ) : (
           <LinearGradient
             colors={[theme.colors.primary, theme.colors.accent, theme.colors.highlight]}

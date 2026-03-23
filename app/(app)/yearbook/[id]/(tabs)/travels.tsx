@@ -20,7 +20,7 @@ import { getTravels, createTravel, getYearbookMembers, getUser, type Travel } fr
 import { uploadTravelImage } from '@/src/services/storage';
 import { getLocationFromImageAsset } from '@/src/utils/imageLocation';
 import { logger } from '@/src/utils/logger';
-import { DSIcon, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
 import { Container, Text, Button, Input, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
 import { MapProfileMarker, initialsFromName } from '@/src/components/maps/MapProfileMarker';
@@ -127,13 +127,14 @@ export default function TravelsTab() {
       try {
         const members = await getYearbookMembers(id);
         const profiles = await Promise.all(members.map((m) => getUser(m.userId)));
-        const homes: {
-          userId: string;
-          name: string;
-          label: string;
-          latitude: number;
-          longitude: number;
-        }[] = [];
+      const homes: {
+        userId: string;
+        name: string;
+        label: string;
+        latitude: number;
+        longitude: number;
+        photoURL?: string | null;
+      }[] = [];
         profiles.forEach((u, i) => {
           if (!u) return;
           const lat = u.homeLatitude;
@@ -271,9 +272,7 @@ export default function TravelsTab() {
   if (loading) {
     return (
       <Container>
-        <View style={styles.loaderWrap}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
@@ -284,6 +283,7 @@ export default function TravelsTab() {
 
   return (
     <View style={styles.screen}>
+      <DeferredFullscreenLoader active={saving} />
       {/* Full-screen map when in map view (native only) */}
       {activeTab === 'map' && Platform.OS !== 'web' && (
         <View style={StyleSheet.absoluteFill}>
@@ -642,7 +642,6 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   webMapOverlay: {
     justifyContent: 'center',
     alignItems: 'center',

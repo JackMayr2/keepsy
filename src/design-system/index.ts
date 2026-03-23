@@ -29,8 +29,13 @@ export type { BrandBackgroundPreset } from './components/BrandBackground';
 export { BrandLogo } from './components/BrandLogo';
 export { KEEPSY_LOGO_IMAGE } from './keepsyLogoAsset';
 export { KeepsyBookLoader } from './components/KeepsyBookLoader';
+export type { KeepsyBookLoaderProps } from './components/KeepsyBookLoader';
+export { LoadingState } from './components/LoadingState';
+export { DeferredFullscreenLoader } from './components/DeferredFullscreenLoader';
+export type { DeferredFullscreenLoaderProps } from './components/DeferredFullscreenLoader';
 export { FloatingKeepsyIcon } from './components/FloatingKeepsyIcon';
 export { standardScrollViewProps, standardFlatListScrollProps } from './constants/scroll';
 export { TAB_BAR_CONTENT_HEIGHT, TAB_BAR_PADDING_TOP } from './constants/tabBar';
 
 export { useHaptic } from './hooks/useHaptic';
+export { useDeferredLoading, DEFERRED_LOADING_DELAY_MS } from './hooks/useDeferredLoading';

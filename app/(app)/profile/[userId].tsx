@@ -5,7 +5,7 @@ import { getUser } from '@/src/services/firestore';
 import { Container, Text, SocialPlatformIcon } from '@/src/components/ui';
 import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { KeepsyBookLoader } from '@/src/design-system';
+import { DeferredFullscreenLoader } from '@/src/design-system';
 import { resolveSocialUrl, socialLinkDisplayText } from '@/src/utils/socialLinks';
 
 const SOCIAL_LABELS: Record<string, string> = {
@@ -30,9 +30,7 @@ export default function MemberProfileScreen() {
   if (loading) {
     return (
       <Container>
-        <View style={styles.loaderWrap}>
-          <KeepsyBookLoader size={52} />
-        </View>
+        <DeferredFullscreenLoader active />
       </Container>
     );
   }
@@ -124,7 +122,6 @@ export default function MemberProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
   header: { alignItems: 'center', marginBottom: 24 },
   avatar: { width: 96, height: 96, borderRadius: 48, marginBottom: 12 },
   avatarPlaceholder: {
