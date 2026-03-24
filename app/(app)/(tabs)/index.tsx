@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -32,6 +34,8 @@ import { YearbookCard } from '@/src/components/YearbookCard';
 import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
 import { Text } from '@/src/components/ui';
 import { Page } from '@/src/design-system';
+import { KEEPSY_LINKS, mailtoSupport, mailtoThoughtsAndIdeas } from '@/src/config/keepsyLinks';
+import { SocialPlatformIcon } from '@/src/components/ui/SocialPlatformIcon';
 
 const GREETING_PHRASES = [
   'Hunting for future nostalgia? You’re in the right place.',
@@ -47,6 +51,39 @@ const H_PADDING = 24;
 const BOTTOM_FLOAT_RESERVE = 96;
 
 type FeatureSlug = 'christmas-cards' | 'family-newsletter' | 'live-reactions' | 'print-exports';
+type ConnectBubbleKey = 'instagram' | 'twitter' | 'ideas' | 'website' | 'help' | 'contact';
+const CONNECT_BUBBLE_KEYS: ConnectBubbleKey[] = ['instagram', 'twitter', 'ideas', 'website', 'help', 'contact'];
+const CONNECT_BUBBLE_SIZE = 58;
+const CONNECT_WAVE_HEIGHT = 10;
+
+function makeWaveOutputs(index: number, total: number, amplitude: number, samples = 121): number[] {
+  const denom = Math.max(1, total - 1);
+  const p = index / denom;
+  const output: number[] = [];
+
+  // Timeline:
+  // 0.00-0.42: wave travels left -> right
+  // 0.42-0.50: rest
+  // 0.50-0.92: wave travels right -> left
+  // 0.92-1.00: rest
+  for (let i = 0; i < samples; i += 1) {
+    const t = i / (samples - 1);
+    let y = 0;
+
+    if (t < 0.42) {
+      const u = t / 0.42; // 0..1
+      const env = Math.sin(u * Math.PI); // smooth in/out
+      y = Math.sin((p - u) * Math.PI * 2) * amplitude * env;
+    } else if (t >= 0.5 && t < 0.92) {
+      const u = (t - 0.5) / 0.42; // 0..1
+      const env = Math.sin(u * Math.PI); // smooth in/out
+      y = Math.sin((p - (1 - u)) * Math.PI * 2) * amplitude * env;
+    }
+
+    output.push(y);
+  }
+  return output;
+}
 
 export default function HomeScreen() {
   const { userId, pendingJoinCode } = useAuth();
@@ -60,6 +97,7 @@ export default function HomeScreen() {
   const phraseIndex = useMemo(() => Math.floor(Math.random() * GREETING_PHRASES.length), [userId]);
   const [fabOpen, setFabOpen] = useState(false);
   const fabExpand = useRef(new Animated.Value(0)).current;
+  const bubbleWave = useRef(new Animated.Value(0)).current;
 
   const sortedYearbooks = useMemo(() => sortYearbooksForHomeCarousel(yearbooks), [yearbooks]);
   const previewIds = useMemo(() => sortedYearbooks.map((y) => y.id), [sortedYearbooks]);
@@ -91,12 +129,40 @@ export default function HomeScreen() {
     }).start();
   }, [fabOpen, fabExpand]);
 
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(bubbleWave, {
+        toValue: 1,
+        duration: 4800,
+        useNativeDriver: true,
+      })
+    );
+    bubbleWave.setValue(0);
+    loop.start();
+    return () => loop.stop();
+  }, [bubbleWave]);
+
   const firstName = me?.firstName?.trim() || 'there';
   const greeting = GREETING_PHRASES[phraseIndex % GREETING_PHRASES.length];
 
   const openIdea = (slug: FeatureSlug) => {
     router.push({ pathname: '/(app)/ideas/[slug]', params: { slug } });
   };
+
+  const openExternal = (url: string, failMessage: string) => {
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Could not open link', failMessage);
+    });
+  };
+
+  const connectBubbles: Array<{ key: ConnectBubbleKey; onPress: () => void }> = [
+    { key: 'instagram', onPress: () => openExternal(KEEPSY_LINKS.instagram, 'Could not open Instagram.') },
+    { key: 'twitter', onPress: () => openExternal(KEEPSY_LINKS.twitter, 'Could not open X.') },
+    { key: 'ideas', onPress: () => openExternal(mailtoThoughtsAndIdeas(), 'Could not open your email app.') },
+    { key: 'website', onPress: () => openExternal(KEEPSY_LINKS.website, 'Could not open the website.') },
+    { key: 'help', onPress: () => openExternal(mailtoSupport(), 'Could not open your email app.') },
+    { key: 'contact', onPress: () => openExternal(`mailto:${KEEPSY_LINKS.feedbackEmail}`, 'Could not open your email app.') },
+  ];
 
   const renderItem = useCallback(
     ({ item }: { item: YearbookWithRole }) => (
@@ -303,6 +369,60 @@ export default function HomeScreen() {
                 Get the teaser →
               </Text>
             </Pressable>
+          </View>
+        </View>
+
+        <View style={[styles.connectSection, { paddingHorizontal: H_PADDING }]}>
+          <Text variant="label" color="secondary" style={styles.sectionLabel}>
+            Connect with Keepsy
+          </Text>
+          <View style={styles.bubbleField}>
+            {connectBubbles.map((bubble, i) => {
+              const samples = 121;
+              const inputRange = Array.from({ length: samples }, (_, idx) => idx / (samples - 1));
+              const wave = bubbleWave.interpolate({
+                inputRange,
+                outputRange: makeWaveOutputs(i, connectBubbles.length, CONNECT_WAVE_HEIGHT, samples),
+              });
+              return (
+                <Animated.View
+                  key={bubble.key}
+                  style={[
+                    styles.bubbleWrap,
+                    {
+                      transform: [{ translateY: wave }],
+                    },
+                  ]}
+                >
+                  <Pressable
+                    onPress={bubble.onPress}
+                    style={({ pressed }) => [
+                      styles.connectBubble,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.borderMuted,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    {bubble.key === 'instagram' ? <SocialPlatformIcon platform="instagram" size={24} /> : null}
+                    {bubble.key === 'twitter' ? <SocialPlatformIcon platform="twitter" size={24} /> : null}
+                    {bubble.key === 'ideas' ? (
+                      <DSIcon name={{ ios: 'lightbulb.fill', android: 'lightbulb', web: 'lightbulb' }} size={24} color={theme.colors.sun} />
+                    ) : null}
+                    {bubble.key === 'website' ? (
+                      <DSIcon name={{ ios: 'globe', android: 'language', web: 'language' }} size={24} color={theme.colors.primary} />
+                    ) : null}
+                    {bubble.key === 'help' ? (
+                      <DSIcon name={{ ios: 'questionmark.circle.fill', android: 'help', web: 'help' }} size={24} color={theme.colors.accent} />
+                    ) : null}
+                    {bubble.key === 'contact' ? (
+                      <DSIcon name={{ ios: 'envelope.fill', android: 'mail', web: 'mail' }} size={24} color={theme.colors.textMuted} />
+                    ) : null}
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
           </View>
         </View>
       </ScrollView>
@@ -592,5 +712,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.24,
     shadowRadius: 18,
     elevation: 12,
+  },
+  connectSection: {
+    marginTop: 20,
+    paddingBottom: 20,
+  },
+  bubbleField: {
+    height: CONNECT_BUBBLE_SIZE + CONNECT_WAVE_HEIGHT * 2 + 4,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bubbleWrap: {
+    width: CONNECT_BUBBLE_SIZE,
+    alignItems: 'center',
+  },
+  connectBubble: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0F1637',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   },
 });
