@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
+  Easing,
   FlatList,
   Image,
   Pressable,
@@ -60,26 +61,10 @@ function makeWaveOutputs(index: number, total: number, amplitude: number, sample
   const denom = Math.max(1, total - 1);
   const p = index / denom;
   const output: number[] = [];
-
-  // Timeline:
-  // 0.00-0.42: wave travels left -> right
-  // 0.42-0.50: rest
-  // 0.50-0.92: wave travels right -> left
-  // 0.92-1.00: rest
   for (let i = 0; i < samples; i += 1) {
     const t = i / (samples - 1);
-    let y = 0;
-
-    if (t < 0.42) {
-      const u = t / 0.42; // 0..1
-      const env = Math.sin(u * Math.PI); // smooth in/out
-      y = Math.sin((p - u) * Math.PI * 2) * amplitude * env;
-    } else if (t >= 0.5 && t < 0.92) {
-      const u = (t - 0.5) / 0.42; // 0..1
-      const env = Math.sin(u * Math.PI); // smooth in/out
-      y = Math.sin((p - (1 - u)) * Math.PI * 2) * amplitude * env;
-    }
-
+    // Continuous synchronized wave with fixed cycle timing.
+    const y = Math.sin((t * Math.PI * 2) - (p * Math.PI * 2)) * amplitude;
     output.push(y);
   }
   return output;
@@ -133,7 +118,9 @@ export default function HomeScreen() {
     const loop = Animated.loop(
       Animated.timing(bubbleWave, {
         toValue: 1,
-        duration: 4800,
+        duration: 7600,
+        easing: Easing.linear,
+        isInteraction: false,
         useNativeDriver: true,
       })
     );
