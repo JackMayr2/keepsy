@@ -1,4 +1,15 @@
 export type YearbookMemberRole = 'creator' | 'admin' | 'member';
+export type YearbookType =
+  | 'college'
+  | 'workplace'
+  | 'family'
+  | 'friends'
+  | 'holiday'
+  | 'sports-team'
+  | 'club-org'
+  | 'travel'
+  | 'wedding'
+  | 'other';
 
 export interface YearbookMember {
   id: string;
@@ -11,6 +22,7 @@ export interface YearbookMember {
 export interface Yearbook {
   id: string;
   name: string;
+  type?: YearbookType;
   description?: string;
   dueDate?: string;
   aiVisualUrl?: string;

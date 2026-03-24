@@ -7,11 +7,12 @@ import {
   getDocs,
   query,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { getFirebaseDb } from '@/src/config/firebase';
 import { logger } from '@/src/utils/logger';
 import type { User, UserCreateInput } from '@/src/types/user.types';
-import type { Yearbook, YearbookMember, YearbookMemberRole, YearbookWithRole } from '@/src/types/yearbook.types';
+import type { Yearbook, YearbookMember, YearbookMemberRole, YearbookWithRole, YearbookType } from '@/src/types/yearbook.types';
 import type { Prompt, Draft, DraftStatus } from '@/src/types/prompt.types';
 
 const USERS = 'users';
@@ -126,7 +127,7 @@ export async function getYearbookMembers(yearbookId: string): Promise<YearbookMe
 
 export async function updateYearbook(
   yearbookId: string,
-  updates: { name?: string; description?: string; dueDate?: string; aiVisualUrl?: string | null }
+  updates: { name?: string; type?: YearbookType; description?: string; dueDate?: string; aiVisualUrl?: string | null }
 ): Promise<void> {
   const db = getFirebaseDb();
   const ref = doc(db, YEARBOOKS, yearbookId);
@@ -144,6 +145,7 @@ export async function getYearbook(id: string): Promise<Yearbook | null> {
   return {
     id: snap.id,
     name: data.name ?? '',
+    type: (data.type as YearbookType | undefined) ?? undefined,
     description: data.description,
     dueDate: data.dueDate,
     aiVisualUrl: data.aiVisualUrl,
@@ -201,7 +203,8 @@ function generateInviteCode(): string {
 
 export async function createYearbook(
   userId: string,
-  input: { name: string; description?: string; dueDate?: string; aiVisualUrl?: string | null }
+  input: { name: string; type?: YearbookType; description?: string; dueDate?: string; aiVisualUrl?: string | null },
+  options?: { seedDefaults?: boolean }
 ): Promise<string> {
   const db = getFirebaseDb();
   const yearbookRef = doc(collection(db, YEARBOOKS));
@@ -209,6 +212,7 @@ export async function createYearbook(
   const inviteCode = generateInviteCode();
   await setDoc(yearbookRef, {
     name: input.name,
+    type: input.type ?? 'other',
     description: input.description ?? '',
     dueDate: input.dueDate ?? null,
     aiVisualUrl: input.aiVisualUrl ?? null,
@@ -222,15 +226,72 @@ export async function createYearbook(
     role: 'creator',
     joinedAt: new Date(),
   });
-  // Seed defaults so the yearbook has prompts, polls, and superlatives immediately
-  try {
-    await ensureDefaultPrompts(id);
-    await ensureDefaultPolls(id);
-    await ensureDefaultSuperlatives(id);
-  } catch (e) {
-    logger.warn('Firestore', 'seed defaults after createYearbook failed', e);
+  if (options?.seedDefaults !== false) {
+    // Seed defaults so the yearbook has prompts, polls, and superlatives immediately
+    try {
+      await ensureDefaultPrompts(id);
+      await ensureDefaultPolls(id);
+      await ensureDefaultSuperlatives(id);
+    } catch (e) {
+      logger.warn('Firestore', 'seed defaults after createYearbook failed', e);
+    }
   }
   return id;
+}
+
+export type YearbookStarterPackInput = {
+  prompts: Array<{ text: string; type: Prompt['type'] }>;
+  polls: Array<{ question: string; options: string[] }>;
+  superlatives: string[];
+};
+
+/**
+ * Writes a curated starter pack in one batch immediately after yearbook creation.
+ */
+export async function createYearbookStarterPack(
+  yearbookId: string,
+  pack: YearbookStarterPackInput
+): Promise<void> {
+  const db = getFirebaseDb();
+  const batch = writeBatch(db);
+
+  pack.prompts.forEach((p, i) => {
+    const text = p.text.trim();
+    if (!text) return;
+    const ref = doc(collection(db, PROMPTS));
+    batch.set(ref, {
+      yearbookId,
+      text,
+      type: p.type,
+      order: i,
+      isDefault: true,
+    });
+  });
+
+  pack.polls.forEach((p) => {
+    const question = p.question.trim();
+    const options = p.options.map((x) => x.trim()).filter(Boolean);
+    if (!question || options.length < 2) return;
+    const ref = doc(collection(db, POLLS));
+    batch.set(ref, {
+      yearbookId,
+      question,
+      options,
+    });
+  });
+
+  pack.superlatives.forEach((category) => {
+    const c = category.trim();
+    if (!c) return;
+    const ref = doc(collection(db, SUPERLATIVES));
+    batch.set(ref, {
+      yearbookId,
+      category: c,
+      nominations: {},
+    });
+  });
+
+  await batch.commit();
 }
 
 export async function getYearbookByInviteCode(code: string): Promise<Yearbook | null> {
@@ -246,6 +307,7 @@ export async function getYearbookByInviteCode(code: string): Promise<Yearbook | 
   return {
     id: d.id,
     name: data.name ?? '',
+    type: (data.type as YearbookType | undefined) ?? undefined,
     description: data.description,
     dueDate: data.dueDate,
     aiVisualUrl: data.aiVisualUrl,
