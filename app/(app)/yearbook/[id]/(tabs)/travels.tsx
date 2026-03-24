@@ -47,6 +47,7 @@ import { MapProfileMarker, initialsFromName } from '@/src/components/maps/MapPro
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { GOOGLE_MAP_DARK_STYLE } from '@/src/theme/googleMapDarkStyle';
 
 const LIST_PADDING_BASE = 24;
 const DEFAULT_LAT = 37.7749;
@@ -66,7 +67,7 @@ export default function TravelsTab() {
   const id = useYearbookId();
   const navigation = useNavigation();
   const { userId } = useAuth();
-  const { theme } = useTheme();
+  const { theme, colorScheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { navVisible, setNavVisible } = useYearbookNav();
@@ -647,6 +648,10 @@ export default function TravelsTab() {
                     longitudeDelta: 0.5,
                   }
             }
+            userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
+            customMapStyle={colorScheme === 'dark' ? [...GOOGLE_MAP_DARK_STYLE] : []}
+            loadingBackgroundColor={theme.colors.background}
+            loadingIndicatorColor={theme.colors.textMuted}
             showsUserLocation={false}
             showsMyLocationButton={false}
           >
