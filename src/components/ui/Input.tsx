@@ -29,7 +29,7 @@ export function Input({
   const { colors, spacing, radii } = theme;
 
   return (
-    <View style={[styles.container, containerStyle]}>
+    <View style={[styles.container, containerStyle]} collapsable={false}>
       {label ? (
         <Text variant="label" color="secondary" style={[styles.label, { marginBottom: theme.spacing.xs }]}>
           {label}

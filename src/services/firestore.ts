@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
 } from 'firebase/firestore';
 import { getFirebaseDb } from '@/src/config/firebase';
 import { logger } from '@/src/utils/logger';
@@ -358,16 +357,46 @@ export async function saveDraft(
   await setDoc(ref, payload, { merge: true });
 }
 
+/** Single draft for the current user on a prompt (doc id is deterministic). */
+export async function getDraftForPrompt(
+  yearbookId: string,
+  promptId: string,
+  userId: string
+): Promise<Draft | null> {
+  const db = getFirebaseDb();
+  const docId = `${yearbookId}_${promptId}_${userId}`;
+  const ref = doc(db, DRAFTS, docId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    id: snap.id,
+    yearbookId: data.yearbookId,
+    promptId: data.promptId,
+    userId: data.userId,
+    content: data.content ?? '',
+    photoURL: data.photoURL,
+    status: (data.status as DraftStatus) ?? 'draft',
+    updatedAt: data.updatedAt?.toDate?.() ?? data.updatedAt,
+  };
+}
+
+function draftUpdatedAtMs(d: Draft): number {
+  const u = d.updatedAt;
+  if (u instanceof Date) return u.getTime();
+  if (u && typeof u === 'object' && 'seconds' in u && typeof (u as { seconds: number }).seconds === 'number') {
+    return (u as { seconds: number }).seconds * 1000;
+  }
+  return 0;
+}
+
 export async function getDraftsForUser(
   userId: string,
   yearbookId?: string
 ): Promise<Draft[]> {
   const db = getFirebaseDb();
-  let q = query(
-    collection(db, DRAFTS),
-    where('userId', '==', userId),
-    orderBy('updatedAt', 'desc')
-  );
+  // Single-field equality only — avoids composite index (userId + orderBy updatedAt).
+  const q = query(collection(db, DRAFTS), where('userId', '==', userId));
   const snap = await getDocs(q);
   let list = snap.docs.map((d) => {
     const data = d.data();
@@ -383,6 +412,7 @@ export async function getDraftsForUser(
     };
   });
   if (yearbookId) list = list.filter((x) => x.yearbookId === yearbookId);
+  list.sort((a, b) => draftUpdatedAtMs(b) - draftUpdatedAtMs(a));
   return list;
 }
 
@@ -574,7 +604,10 @@ export type Travel = {
   id: string;
   yearbookId: string;
   userId: string;
+  /** @deprecated Prefer photoURLs; kept for older docs */
   photoURL?: string | null;
+  /** Multiple trip photos (new); falls back to [photoURL] when absent */
+  photoURLs?: string[] | null;
   placeName?: string | null;
   notes?: string | null;
   caption?: string | null;
@@ -583,6 +616,13 @@ export type Travel = {
   taggedUserIds: string[];
   createdAt: unknown;
 };
+
+/** Normalized photo list for UI (handles legacy single photoURL). */
+export function travelPhotoUrls(t: Pick<Travel, 'photoURL' | 'photoURLs'>): string[] {
+  const arr = t.photoURLs;
+  if (Array.isArray(arr) && arr.length > 0) return arr.filter(Boolean) as string[];
+  return t.photoURL ? [t.photoURL] : [];
+}
 
 export async function getTravels(yearbookId: string): Promise<Travel[]> {
   const db = getFirebaseDb();
@@ -593,11 +633,17 @@ export async function getTravels(yearbookId: string): Promise<Travel[]> {
   const snap = await getDocs(q);
   const list = snap.docs.map((d) => {
     const data = d.data();
+    const photoURLsRaw = data.photoURLs;
+    const photoURLs = Array.isArray(photoURLsRaw)
+      ? (photoURLsRaw.filter(Boolean) as string[])
+      : null;
+    const single = data.photoURL ?? null;
     return {
       id: d.id,
       yearbookId: data.yearbookId,
       userId: data.userId,
-      photoURL: data.photoURL ?? null,
+      photoURL: single,
+      photoURLs: photoURLs?.length ? photoURLs : single ? [single] : null,
       placeName: data.placeName ?? null,
       notes: data.notes ?? null,
       caption: data.caption ?? data.notes ?? null,
@@ -626,6 +672,7 @@ export async function createTravel(
     notes?: string | null;
     caption?: string | null;
     photoURL?: string | null;
+    photoURLs?: string[] | null;
     latitude?: number | null;
     longitude?: number | null;
     taggedUserIds?: string[];
@@ -634,13 +681,21 @@ export async function createTravel(
   const db = getFirebaseDb();
   const ref = doc(collection(db, TRAVELS));
   const caption = input.caption ?? input.notes ?? null;
+  const urls =
+    input.photoURLs != null && input.photoURLs.length > 0
+      ? input.photoURLs.filter(Boolean)
+      : input.photoURL
+        ? [input.photoURL]
+        : [];
+  const primary = urls[0] ?? null;
   await setDoc(ref, {
     yearbookId,
     userId,
     placeName: input.placeName ?? null,
     notes: input.notes ?? null,
     caption: caption ?? null,
-    photoURL: input.photoURL ?? null,
+    photoURL: primary,
+    photoURLs: urls.length > 0 ? urls : null,
     latitude: input.latitude ?? null,
     longitude: input.longitude ?? null,
     taggedUserIds: input.taggedUserIds ?? [],

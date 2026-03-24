@@ -9,6 +9,8 @@ export type DeferredFullscreenLoaderProps = {
   delayMs?: number;
   /** Screen reader only — no visible text. */
   accessibilityLabel?: string;
+  /** Shown under the loader when the overlay is visible (e.g. upload progress). */
+  visibleSubtitle?: string;
   size?: number;
   dimBackground?: boolean;
 };
@@ -21,6 +23,7 @@ export function DeferredFullscreenLoader({
   active,
   delayMs = DEFERRED_LOADING_DELAY_MS,
   accessibilityLabel,
+  visibleSubtitle,
   size,
   dimBackground,
 }: DeferredFullscreenLoaderProps) {
@@ -32,6 +35,7 @@ export function DeferredFullscreenLoader({
     <LoadingState
       fill
       accessibilityLabel={accessibilityLabel}
+      visibleSubtitle={visibleSubtitle}
       size={size}
       dimBackground={dimBackground}
     />

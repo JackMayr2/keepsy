@@ -10,6 +10,8 @@ export { Container } from './Container';
 export type { ContainerProps } from './Container';
 export { PlaceAutocomplete } from './PlaceAutocomplete';
 export type { PlaceAutocompleteProps, ResolvedPlace } from './PlaceAutocomplete';
+export { KeyboardAvoidingModalRoot } from './KeyboardAvoidingModalRoot';
+export type { KeyboardAvoidingModalRootProps } from './KeyboardAvoidingModalRoot';
 export { DatePickerField } from './DatePickerField';
 export type { DatePickerFieldProps } from './DatePickerField';
 export { SocialPlatformIcon } from './SocialPlatformIcon';

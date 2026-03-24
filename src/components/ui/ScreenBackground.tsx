@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrandBackground, type BrandBackgroundPreset } from '@/src/design-system';
+import { BrandBackground, type BrandBackgroundPreset } from '@/src/design-system/components/BrandBackground';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 type ScreenBackgroundProps = {

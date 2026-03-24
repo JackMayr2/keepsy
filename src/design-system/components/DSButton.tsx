@@ -4,7 +4,6 @@ import { Button as TamaguiButton, Text, XStack } from 'tamagui';
 import type { GetProps } from 'tamagui';
 import { useTheme as useAppTheme } from '@/src/contexts/ThemeContext';
 import { useHaptic } from '../hooks/useHaptic';
-import { KeepsyBookLoader } from './KeepsyBookLoader';
 
 const AnimatedButton = Animated.createAnimatedComponent(TamaguiButton);
 
@@ -105,33 +104,29 @@ export function DSButton({
       style={animatedStyle}
       {...rest}
     >
-      {loading ? (
-        <KeepsyBookLoader size={compact ? 24 : 28} />
-      ) : (
-        <XStack width="100%" alignItems="center" justifyContent="center" gap="$2">
-          {iconOnly ? (
-            icon
-          ) : (
-            <>
-              {icon != null ? (
-                <XStack width={24} minHeight={20} justifyContent="center" alignItems="center">
-                  {icon}
-                </XStack>
-              ) : null}
-              <XStack flex={1} minWidth={0} justifyContent="center" alignItems="center">
-                <Text color={chrome.textColor as any} fontSize="$4" fontWeight="700" letterSpacing={0.2} textAlign="center" lineHeight={18} numberOfLines={1}>
-                  {title}
-                </Text>
+      <XStack width="100%" alignItems="center" justifyContent="center" gap="$2">
+        {iconOnly ? (
+          icon
+        ) : (
+          <>
+            {icon != null ? (
+              <XStack width={24} minHeight={20} justifyContent="center" alignItems="center">
+                {icon}
               </XStack>
-              {iconAfter != null ? (
-                <XStack width={24} minHeight={20} justifyContent="center" alignItems="center">
-                  {iconAfter}
-                </XStack>
-              ) : null}
-            </>
-          )}
-        </XStack>
-      )}
+            ) : null}
+            <XStack flex={1} minWidth={0} justifyContent="center" alignItems="center">
+              <Text color={chrome.textColor as any} fontSize="$4" fontWeight="700" letterSpacing={0.2} textAlign="center" lineHeight={18} numberOfLines={1}>
+                {title}
+              </Text>
+            </XStack>
+            {iconAfter != null ? (
+              <XStack width={24} minHeight={20} justifyContent="center" alignItems="center">
+                {iconAfter}
+              </XStack>
+            ) : null}
+          </>
+        )}
+      </XStack>
     </AnimatedButton>
   );
 }

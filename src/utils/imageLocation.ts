@@ -1,3 +1,12 @@
+function parseNumber(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = parseFloat(v.replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 /**
  * Try to get GPS coordinates from image picker result (when exif: true).
  * Returns { latitude, longitude } or null if not present.
@@ -8,7 +17,14 @@ export function getLocationFromImageAsset(asset: {
   const exif = asset?.exif;
   if (!exif || typeof exif !== 'object') return null;
 
-  // EXIF GPS can be stored as GPSLatitude/GPSLongitude (rational arrays) and refs
+  // Direct decimal pairs (some Android / tooling)
+  const lat0 = parseNumber(exif.latitude ?? exif.Latitude ?? exif.GPSLatitude);
+  const lon0 = parseNumber(exif.longitude ?? exif.Longitude ?? exif.GPSLongitude);
+  if (lat0 != null && lon0 != null && Math.abs(lat0) <= 90 && Math.abs(lon0) <= 180) {
+    return { latitude: lat0, longitude: lon0 };
+  }
+
+  // EXIF GPS as rational arrays + hemisphere refs (iOS / common EXIF)
   const lat = exif.GPSLatitude ?? exif.gpsLatitude;
   const lon = exif.GPSLongitude ?? exif.gpsLongitude;
   if (lat != null && lon != null && Array.isArray(lat) && Array.isArray(lon)) {
@@ -17,12 +33,14 @@ export function getLocationFromImageAsset(asset: {
     if (latNum != null && lonNum != null) return { latitude: latNum, longitude: lonNum };
   }
 
-  // Some pickers return decimal directly
-  const latD = exif.GPSLatitude as number | undefined;
-  const lonD = exif.GPSLongitude as number | undefined;
-  if (typeof latD === 'number' && typeof lonD === 'number') {
-    return { latitude: latD, longitude: lonD };
+  // Nested { GPS: { ... } } (occasionally serialized this way)
+  const gps = exif.GPS ?? exif.gps;
+  if (gps && typeof gps === 'object') {
+    const g = gps as Record<string, unknown>;
+    const nested = getLocationFromImageAsset({ exif: g });
+    if (nested) return nested;
   }
+
   return null;
 }
 

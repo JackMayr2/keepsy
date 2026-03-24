@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, ViewStyle, StyleProp, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { KeepsyBookLoader } from '@/src/design-system';
 import { Text } from './Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
@@ -58,33 +57,29 @@ export function Button({
   };
   const content = (
     <View style={[styles.content, iconOnly && styles.contentIconOnly]}>
-      {loading ? (
-        <KeepsyBookLoader size={compact ? 24 : 28} />
+      {iconOnly ? (
+        icon
       ) : (
-        iconOnly ? (
-          icon
-        ) : (
-          <>
-            <View style={styles.iconSlot}>{icon}</View>
-            <View style={styles.labelWrap}>
-              <Text
-                variant="label"
-                style={{
-                  color: v.textColor ?? colors.text,
-                  fontWeight: '700',
-                  letterSpacing: 0.3,
-                  textAlign: 'center',
-                  textAlignVertical: 'center',
-                  includeFontPadding: false,
-                }}
-                numberOfLines={1}
-              >
-                {title}
-              </Text>
-            </View>
-            <View style={styles.iconSlot}>{iconAfter}</View>
-          </>
-        )
+        <>
+          <View style={styles.iconSlot}>{icon}</View>
+          <View style={styles.labelWrap}>
+            <Text
+              variant="label"
+              style={{
+                color: v.textColor ?? colors.text,
+                fontWeight: '700',
+                letterSpacing: 0.3,
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                includeFontPadding: false,
+              }}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+          </View>
+          <View style={styles.iconSlot}>{iconAfter}</View>
+        </>
       )}
     </View>
   );

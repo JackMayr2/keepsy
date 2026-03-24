@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
@@ -5,8 +6,10 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
@@ -107,15 +110,29 @@ export default function RootLayout() {
   });
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <FontsAndApp loaded={loaded} error={error} />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <KeyboardRoot>
+            <FontsAndApp loaded={loaded} error={error} />
+          </KeyboardRoot>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
+function KeyboardRoot({ children }: { children: React.ReactNode }) {
+  if (Platform.OS === 'web') {
+    return <>{children}</>;
+  }
+  return <KeyboardProvider>{children}</KeyboardProvider>;
+}
+
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   bootLoader: {
     flex: 1,
     justifyContent: 'center',

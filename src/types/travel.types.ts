@@ -3,6 +3,7 @@ export interface Travel {
   yearbookId: string;
   userId: string;
   photoURL?: string;
+  photoURLs?: string[] | null;
   placeName?: string;
   notes?: string;
   taggedUserIds: string[];

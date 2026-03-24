@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { joinYearbookByCode } from '@/src/services/firestore';
 import { logger } from '@/src/utils/logger';
@@ -11,7 +10,6 @@ import { Container, Button, Input, Text } from '@/src/components/ui';
 export default function JoinYearbookScreen() {
   const { userId, pendingJoinCode, setPendingJoinCode } = useAuth();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ code?: string }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,7 +41,7 @@ export default function JoinYearbookScreen() {
   };
 
   return (
-    <Container style={[styles.content, { paddingBottom: insets.bottom }]}>
+    <Container scroll style={styles.content}>
       <DeferredFullscreenLoader active={loading} />
       <BrandLogo size="sm" tagline="step into the circle" />
       <Text variant="titleLarge" style={styles.title}>

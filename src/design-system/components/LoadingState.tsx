@@ -4,6 +4,7 @@ import {
   Platform,
   StyleProp,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
   type ViewStyle,
@@ -31,6 +32,8 @@ type LoadingStateProps = {
    * @default true
    */
   dimBackground?: boolean;
+  /** When `fill` is true, optional line of text shown under the loader (e.g. upload progress). */
+  visibleSubtitle?: string;
 };
 
 const DEFAULT_SIZE_INLINE = 56;
@@ -54,6 +57,7 @@ export function LoadingState({
   minHeight = 200,
   fill = false,
   dimBackground = true,
+  visibleSubtitle,
   style,
 }: LoadingStateProps) {
   const { colorScheme } = useTheme();
@@ -91,6 +95,11 @@ export function LoadingState({
           ) : null}
           <View style={styles.modalCenter} pointerEvents="box-none">
             {inner}
+            {visibleSubtitle ? (
+              <Text style={styles.visibleSubtitle} numberOfLines={2}>
+                {visibleSubtitle}
+              </Text>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -127,5 +136,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    gap: 16,
+  },
+  visibleSubtitle: {
+    marginTop: 4,
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

@@ -3,7 +3,7 @@ import {
   View,
   StyleSheet,
   TextInput,
-  FlatList,
+  ScrollView,
   Pressable,
   Keyboard,
   ViewStyle,
@@ -181,26 +181,31 @@ export function PlaceAutocomplete({
               <KeepsyBookLoader size={28} />
             </View>
           ) : (
-            <FlatList
+            <ScrollView
               keyboardShouldPersistTaps="handled"
-              data={suggestions}
-              keyExtractor={(item) => item.id}
               nestedScrollEnabled
               style={styles.list}
-              renderItem={({ item }) => (
+              showsVerticalScrollIndicator={false}
+            >
+              {suggestions.map((item, index) => (
                 <Pressable
+                  key={item.id}
                   onPress={() => handleSelect(item)}
                   style={({ pressed }) => [
                     styles.suggestionRow,
-                    { borderBottomColor: colors.borderMuted, opacity: pressed ? 0.75 : 1 },
+                    {
+                      borderBottomColor: colors.borderMuted,
+                      opacity: pressed ? 0.75 : 1,
+                      borderBottomWidth: index === suggestions.length - 1 ? 0 : StyleSheet.hairlineWidth,
+                    },
                   ]}
                 >
                   <Text variant="body" numberOfLines={2}>
                     {item.label}
                   </Text>
                 </Pressable>
-              )}
-            />
+              ))}
+            </ScrollView>
           )}
         </View>
       ) : null}
@@ -239,7 +244,6 @@ const styles = StyleSheet.create({
   suggestionRow: {
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   attribution: {
     marginTop: 6,

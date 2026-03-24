@@ -38,6 +38,14 @@ export default {
           photosPermission: 'Allow Keepsy to access your photos so you can set a profile picture.',
         },
       ],
+      [
+        'expo-media-library',
+        {
+          photosPermission: 'Keepsy may access photos when you pick or save images.',
+          savePhotosPermission: 'Allow Keepsy to save trip photos to your photo library.',
+          granularPermissions: ['photo'],
+        },
+      ],
       '@react-native-community/datetimepicker',
     ],
     experiments: {
