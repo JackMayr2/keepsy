@@ -1,0 +1,59 @@
+Keepsy — QA / regression audit checklist
+==========================================
+Use this list when testing releases or new features. Each item is a bug class we fixed
+once; re-check that similar code paths still behave correctly.
+
+How to use
+----------
+- Periodically run through the relevant sections (or full list before a ship).
+- When adding a new feature, skim the list for related areas (e.g. maps + Firestore).
+- When you fix a new “small” bug, append a short entry under “Log” at the bottom.
+
+---
+
+TRAVELS — TRIP PHOTOS (FULLSCREEN / UPLOAD)
+[ ] Swiping multiple uploaded trip photos shows a different image per page (not the same).
+[ ] Parallel uploads cannot overwrite the same Storage object (unique paths per file).
+[ ] Firestore `photoURLs` has no duplicate URLs for distinct uploads.
+
+TRAVELS — MAP PINS
+[ ] After saving a new trip with lat/lng, the map pin appears without leaving the yearbook.
+[ ] Stale Firestore query after create does not drop the new trip from the list (merge + optimistic).
+[ ] Map markers update when the travel list changes (MapView remounts when ids change).
+
+MEDIA — MAP MARKERS
+[ ] Custom map markers redraw when coordinates change (tracksViewChanges).
+
+SUPERLATIVES — NOMINATIONS
+[ ] After nominating someone for a category, the app stays responsive (no freeze).
+[ ] Nomination refresh does not replace the whole tab with the global loading screen (silent refresh).
+[ ] While the nomination Modal is visible, no second RN Modal is shown (e.g. no DeferredFullscreenLoader /
+  LoadingState fill — use View + ActivityIndicator overlay).
+
+GENERAL — FIRESTORE REFRESH PATTERNS
+[ ] Any “refresh after mutation” must not set `loading` to true if that unmounts a Modal or
+    fragile native UI mid-interaction; prefer silent refresh or inline spinner.
+
+---
+
+Log (append new fixes here — date + area + what to verify)
+----------------------------------------------------------
+2025-03-23 | Travels — trip photos duplicate in fullscreen
+  Verify: unique Storage suffix per upload; optional dedupe of URLs; stable keys on PagerView
+  / FullscreenZoomablePhoto using uri.
+
+2025-03-23 | Travels — map pin missing after submit
+  Verify: await load after save; merge server list with previous state; optimistic insert
+  after createTravel; MapView key includes travel ids.
+
+2025-03-23 | Map — MapProfileMarker
+  Verify: tracksViewChanges resets when coordinate changes so new markers render.
+
+2025-03-23 | Superlatives — freeze after nominate
+  Verify: load({ showLoadingOverlay: false }) after nominate; modal closes before refresh;
+  no full-screen loading state that unmounts the tab during nomination.
+
+2025-03-23 | Superlatives — freeze after nominate (nested Modals)
+  Verify: do NOT use DeferredFullscreenLoader while the nomination Modal is open — it uses
+  LoadingState(fill) which opens a second RN Modal (Lottie) and stacks with the sheet → freeze.
+  Use an in-tree ActivityIndicator overlay instead; InteractionManager.runAfterInteractions before refresh.

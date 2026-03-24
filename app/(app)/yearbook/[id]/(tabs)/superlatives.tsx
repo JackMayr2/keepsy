@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Modal, FlatList, Image } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Modal,
+  FlatList,
+  Image,
+  ActivityIndicator,
+  InteractionManager,
+} from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -57,12 +66,17 @@ export default function SuperlativesTab() {
     navigation.getParent()?.setOptions({ headerShown: navVisible });
   }, [navigation, navVisible]);
 
-  const load = async () => {
+  /**
+   * @param showLoadingOverlay - When false (e.g. after nominating), refresh data without replacing the whole screen.
+   * Setting `loading` true unmounts the list + modal and can freeze native modals mid-dismiss.
+   */
+  const load = async (options?: { showLoadingOverlay?: boolean }) => {
     if (!id) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const showLoadingOverlay = options?.showLoadingOverlay !== false;
+    if (showLoadingOverlay) setLoading(true);
     try {
       try {
         await ensureDefaultSuperlatives(id);
@@ -88,7 +102,7 @@ export default function SuperlativesTab() {
       );
       setMembers(withUsers);
     } finally {
-      setLoading(false);
+      if (showLoadingOverlay) setLoading(false);
     }
   };
 
@@ -97,12 +111,16 @@ export default function SuperlativesTab() {
   }, [id]);
 
   const handleNominate = async (superlativeId: string, nominatedUserId: string) => {
-    if (!userId) return;
+    if (!userId || nominating) return;
     setNominating(true);
     try {
       await nominateSuperlative(superlativeId, userId, nominatedUserId);
-      await load();
       setSelectedSuperlative(null);
+      // Let the nomination modal finish dismissing before refreshing — avoids native stalls.
+      await new Promise<void>((resolve) => {
+        InteractionManager.runAfterInteractions(() => resolve());
+      });
+      await load({ showLoadingOverlay: false });
     } finally {
       setNominating(false);
     }
@@ -133,7 +151,13 @@ export default function SuperlativesTab() {
 
   return (
     <Container>
-      <DeferredFullscreenLoader active={nominating} />
+      {/* Do not use DeferredFullscreenLoader here: it renders a second RN Modal (Lottie) and stacks with the nomination Modal → freezes on iOS/Android. */}
+      {nominating ? (
+        <View style={styles.nominatingOverlay} pointerEvents="box-none">
+          <View style={[StyleSheet.absoluteFill, styles.nominatingScrim]} pointerEvents="auto" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : null}
       <FlatList
         data={superlatives}
         keyExtractor={(item) => item.id}
@@ -278,4 +302,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: { marginTop: 8 },
+  nominatingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nominatingScrim: {
+    backgroundColor: 'rgba(0,0,0,0.22)',
+  },
 });
