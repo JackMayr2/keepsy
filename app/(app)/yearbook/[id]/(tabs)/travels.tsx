@@ -143,6 +143,18 @@ export default function TravelsTab() {
     }
   }, [fullscreenGallery, windowWidth]);
 
+  /** Warm cache for prev/current/next so paging in fullscreen feels instant (native). */
+  useEffect(() => {
+    if (!fullscreenGallery || Platform.OS === 'web') return;
+    const { urls } = fullscreenGallery;
+    const i = fullscreenPhotoIndex;
+    for (const idx of [i - 1, i, i + 1]) {
+      if (idx >= 0 && idx < urls.length && urls[idx]) {
+        Image.prefetch(urls[idx]).catch(() => {});
+      }
+    }
+  }, [fullscreenGallery, fullscreenPhotoIndex]);
+
   const saveCurrentFullscreenPhoto = async () => {
     if (!fullscreenGallery) return;
     const uri = fullscreenGallery.urls[fullscreenPhotoIndex];

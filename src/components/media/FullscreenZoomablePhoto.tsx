@@ -1,18 +1,15 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Platform, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { runOnJS, useAnimatedReaction } from 'react-native-reanimated';
+import {
+  fitContainer,
+  ResumableZoom,
+  type ResumableZoomRefType,
+  useTransformationState,
+} from 'react-native-zoom-toolkit';
 
-const MIN_SCALE = 1;
-const MAX_SCALE = 5;
-/** Feels close to system photo viewer / map zoom */
-const SPRING = { damping: 22, stiffness: 280, mass: 0.65 };
-const DOUBLE_TAP_SCALE = 2.75;
+const SCALE_EPSILON = 1.01;
+const FALLBACK_MAX_SCALE = 5;
 
 type Props = {
   uri: string;
@@ -23,12 +20,11 @@ type Props = {
   onZoomChange?: (zoomed: boolean) => void;
 };
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
+type ImageResolution = {
+  width: number;
+  height: number;
+};
 
-/**
- * Full-screen photo zoom: focal-point pinch (Photos / Maps style), one-finger pan when zoomed,
- * double-tap to zoom in/out toward the tap. Web: plain image.
- */
 export function FullscreenZoomablePhoto({
   uri,
   width,
@@ -37,212 +33,111 @@ export function FullscreenZoomablePhoto({
   allowPan,
   onZoomChange,
 }: Props) {
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
-
-  const pinchBaseScale = useSharedValue(1);
-  const pinchBaseTx = useSharedValue(0);
-  const pinchBaseTy = useSharedValue(0);
-  const panStartTx = useSharedValue(0);
-  const panStartTy = useSharedValue(0);
-  /** 1 once we've told JS we're zoomed (avoids pager steal at 1× + runOnJS spam). */
-  const zoomNotified = useSharedValue(0);
+  const zoomRef = useRef<ResumableZoomRefType>(null);
+  const zoomedRef = useRef(false);
+  const [resolution, setResolution] = useState<ImageResolution | null>(null);
+  const { onUpdate: onZoomUpdate, state: zoomState } = useTransformationState('resumable');
 
   const notifyZoom = useCallback(
-    (z: boolean) => {
-      onZoomChange?.(z);
+    (zoomed: boolean) => {
+      if (zoomedRef.current === zoomed) return;
+      zoomedRef.current = zoomed;
+      onZoomChange?.(zoomed);
     },
     [onZoomChange]
   );
 
-  const resetTransform = useCallback(() => {
-    zoomNotified.value = 0;
-    scale.value = 1;
-    savedScale.value = 1;
-    translateX.value = 0;
-    translateY.value = 0;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
+  useEffect(() => {
+    let cancelled = false;
+
+    setResolution(null);
+    Image.getSize(
+      uri,
+      (imgWidth, imgHeight) => {
+        if (cancelled) return;
+        if (imgWidth > 0 && imgHeight > 0) {
+          setResolution({ width: imgWidth, height: imgHeight });
+          return;
+        }
+        setResolution({ width, height });
+      },
+      () => {
+        if (!cancelled) {
+          setResolution({ width, height });
+        }
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [height, uri, width]);
+
+  useEffect(() => {
+    zoomRef.current?.reset(false);
     notifyZoom(false);
-  }, [zoomNotified, scale, savedScale, translateX, translateY, savedTranslateX, savedTranslateY, notifyZoom]);
+  }, [isActive, notifyZoom, uri]);
 
-  useEffect(() => {
-    resetTransform();
-  }, [uri, resetTransform]);
+  useEffect(
+    () => () => {
+      notifyZoom(false);
+    },
+    [notifyZoom]
+  );
 
-  useEffect(() => {
-    if (!isActive) {
-      resetTransform();
+  useAnimatedReaction(
+    () => zoomState.scale.value > SCALE_EPSILON,
+    (zoomed, previous) => {
+      if (zoomed !== previous) {
+        runOnJS(notifyZoom)(zoomed);
+      }
+    },
+    [notifyZoom]
+  );
+
+  const fittedSize = useMemo(() => {
+    if (!resolution || resolution.width <= 0 || resolution.height <= 0) {
+      return { width, height };
     }
-  }, [isActive, resetTransform]);
 
-  const pinchGesture = useMemo(
-    () =>
-      Gesture.Pinch()
-        .onBegin(() => {
-          pinchBaseScale.value = savedScale.value;
-          pinchBaseTx.value = savedTranslateX.value;
-          pinchBaseTy.value = savedTranslateY.value;
-        })
-        .onUpdate((e) => {
-          const b = pinchBaseScale.value;
-          const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE, b * e.scale));
-          const fx = e.focalX;
-          const fy = e.focalY;
-          // Keep the world point under the pinch focal fixed while scaling (Photos-style).
-          translateX.value = fx - (fx - pinchBaseTx.value) * (s / b);
-          translateY.value = fy - (fy - pinchBaseTy.value) * (s / b);
-          scale.value = s;
-          if (s > 1.02 && zoomNotified.value === 0) {
-            zoomNotified.value = 1;
-            runOnJS(notifyZoom)(true);
-          }
-        })
-        .onEnd(() => {
-          savedScale.value = scale.value;
-          savedTranslateX.value = translateX.value;
-          savedTranslateY.value = translateY.value;
+    return fitContainer(resolution.width / resolution.height, { width, height });
+  }, [height, resolution, width]);
 
-          if (scale.value < 1.02) {
-            zoomNotified.value = 0;
-            scale.value = withSpring(1, SPRING, (finished) => {
-              if (finished) {
-                savedScale.value = 1;
-                savedTranslateX.value = 0;
-                savedTranslateY.value = 0;
-                runOnJS(notifyZoom)(false);
-              }
-            });
-            translateX.value = withSpring(0, SPRING);
-            translateY.value = withSpring(0, SPRING);
-          } else {
-            zoomNotified.value = 1;
-            runOnJS(notifyZoom)(true);
-          }
-        }),
-    [
-      notifyZoom,
-      pinchBaseScale,
-      pinchBaseTx,
-      pinchBaseTy,
-      scale,
-      savedScale,
-      savedTranslateX,
-      savedTranslateY,
-      translateX,
-      translateY,
-      zoomNotified,
-    ]
-  );
-
-  const panGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .maxPointers(1)
-        .enabled(allowPan)
-        .onBegin(() => {
-          panStartTx.value = savedTranslateX.value;
-          panStartTy.value = savedTranslateY.value;
-        })
-        .onUpdate((e) => {
-          if (savedScale.value > 1.01) {
-            translateX.value = panStartTx.value + e.translationX;
-            translateY.value = panStartTy.value + e.translationY;
-          }
-        })
-        .onEnd(() => {
-          savedTranslateX.value = translateX.value;
-          savedTranslateY.value = translateY.value;
-        }),
-    [allowPan, panStartTx, panStartTy, savedScale, savedTranslateX, savedTranslateY, translateX, translateY]
-  );
-
-  const doubleTap = useMemo(
-    () =>
-      Gesture.Tap()
-        .numberOfTaps(2)
-        .maxDuration(280)
-        .onEnd((e) => {
-          const fx = e.x;
-          const fy = e.y;
-          const s0 = savedScale.value;
-          const tx0 = savedTranslateX.value;
-          const ty0 = savedTranslateY.value;
-
-          if (s0 > 1.08) {
-            zoomNotified.value = 0;
-            // Zoom out — spring back to identity
-            scale.value = withSpring(1, SPRING, (finished) => {
-              if (finished) {
-                savedScale.value = 1;
-                savedTranslateX.value = 0;
-                savedTranslateY.value = 0;
-                runOnJS(notifyZoom)(false);
-              }
-            });
-            translateX.value = withSpring(0, SPRING);
-            translateY.value = withSpring(0, SPRING);
-            return;
-          }
-
-          // Zoom in toward tap
-          const target = Math.min(MAX_SCALE, DOUBLE_TAP_SCALE);
-          const newTx = fx - (fx - tx0) * (target / s0);
-          const newTy = fy - (fy - ty0) * (target / s0);
-
-          zoomNotified.value = 1;
-          scale.value = withSpring(target, SPRING);
-          translateX.value = withSpring(newTx, SPRING);
-          translateY.value = withSpring(newTy, SPRING);
-
-          savedScale.value = target;
-          savedTranslateX.value = newTx;
-          savedTranslateY.value = newTy;
-          runOnJS(notifyZoom)(true);
-        }),
-    [notifyZoom, scale, savedScale, savedTranslateX, savedTranslateY, translateX, translateY, zoomNotified]
-  );
-
-  const zoomGestures = useMemo(
-    () => Gesture.Simultaneous(pinchGesture, panGesture),
-    [pinchGesture, panGesture]
-  );
-
-  const composed = useMemo(
-    () => Gesture.Exclusive(doubleTap, zoomGestures),
-    [doubleTap, zoomGestures]
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-  }));
+  if (width < 1 || height < 1) {
+    return null;
+  }
 
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.box, { width, height }]}>
-        <Image source={{ uri }} style={[styles.image, { width, height }]} resizeMode="contain" />
+        <Image source={{ uri }} style={[styles.image, fittedSize]} resizeMode="contain" />
       </View>
     );
   }
 
   return (
-    <GestureDetector gesture={composed}>
-      <Animated.View style={[styles.box, { width, height }]}>
-        <AnimatedImage
+    <View style={[styles.box, { width, height }]}>
+      <ResumableZoom
+        ref={zoomRef}
+        style={styles.zoomRoot}
+        extendGestures
+        panEnabled={allowPan}
+        allowPinchPanning
+        pinchEnabled
+        tapsEnabled
+        panMode="clamp"
+        scaleMode="bounce"
+        maxScale={resolution ?? FALLBACK_MAX_SCALE}
+        onUpdate={onZoomUpdate}
+      >
+        <Image
           source={{ uri }}
-          style={[styles.image, { width, height }, animatedStyle]}
+          style={[styles.image, fittedSize]}
+          resizeMethod="scale"
           resizeMode="contain"
         />
-      </Animated.View>
-    </GestureDetector>
+      </ResumableZoom>
+    </View>
   );
 }
 
@@ -251,6 +146,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  zoomRoot: {
+    width: '100%',
+    height: '100%',
   },
   image: {
     backgroundColor: '#000000',
