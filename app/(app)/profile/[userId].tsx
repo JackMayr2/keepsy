@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, Linking, Pressable } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { getUser } from '@/src/services/firestore';
-import { Container, Text, SocialPlatformIcon } from '@/src/components/ui';
-import type { User } from '@/src/types/user.types';
+import { Container, SocialPlatformIcon, Text } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { DeferredFullscreenLoader } from '@/src/design-system';
-import { resolveSocialUrl, socialLinkDisplayText } from '@/src/utils/socialLinks';
+import { getDraftsForUser, getPrompts, getUser } from '@/src/services/firestore';
+import type { Draft, Prompt } from '@/src/types/prompt.types';
+import type { User } from '@/src/types/user.types';
+import {
+    resolveSocialUrl,
+    socialPlatformChipStyle,
+} from '@/src/utils/socialLinks';
+import { HeaderBackButton } from '@react-navigation/elements';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 const SOCIAL_LABELS: Record<string, string> = {
   instagram: 'Instagram',
@@ -14,18 +19,94 @@ const SOCIAL_LABELS: Record<string, string> = {
   linkedin: 'LinkedIn',
 };
 
+type PromptAnswerRow = { prompt: Prompt; draft: Draft };
+
+function paramString(v: string | string[] | undefined): string | undefined {
+  if (v == null) return undefined;
+  return Array.isArray(v) ? v[0] : v;
+}
+
 export default function MemberProfileScreen() {
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const params = useLocalSearchParams<{ userId: string; yearbookId?: string | string[] }>();
+  const profileUserId = paramString(params.userId);
+  const yearbookId = paramString(params.yearbookId);
+
+  const router = useRouter();
+  const navigation = useNavigation();
   const { theme } = useTheme();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (yearbookId) {
+      router.replace({ pathname: '/(app)/yearbook/[id]', params: { id: yearbookId } });
+      return;
+    }
+    router.replace('/(app)');
+  }, [router, yearbookId]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: (props) => <HeaderBackButton {...props} onPress={handleBack} />,
+    });
+  }, [navigation, handleBack]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [promptRows, setPromptRows] = useState<PromptAnswerRow[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
-    getUser(userId)
+    if (!profileUserId) {
+      setLoading(false);
+      return;
+    }
+    getUser(profileUserId)
       .then(setUser)
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, [profileUserId]);
+
+  useEffect(() => {
+    if (!profileUserId || !yearbookId) {
+      setPromptRows([]);
+      setPromptsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPromptsLoading(true);
+    (async () => {
+      try {
+        const [plist, drafts] = await Promise.all([
+          getPrompts(yearbookId),
+          getDraftsForUser(profileUserId, yearbookId),
+        ]);
+        if (cancelled) return;
+        const byPrompt: Record<string, Draft> = {};
+        for (const d of drafts) {
+          byPrompt[d.promptId] = d;
+        }
+        const sorted = [...plist].sort((a, b) => a.order - b.order);
+        const rows: PromptAnswerRow[] = [];
+        for (const p of sorted) {
+          const d = byPrompt[p.id];
+          if (!d || d.status !== 'submitted') continue;
+          const hasText = Boolean(d.content?.trim());
+          const hasPhoto = Boolean(d.photoURL);
+          if (!hasText && !hasPhoto) continue;
+          rows.push({ prompt: p, draft: d });
+        }
+        setPromptRows(rows);
+      } catch {
+        if (!cancelled) setPromptRows([]);
+      } finally {
+        if (!cancelled) setPromptsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileUserId, yearbookId]);
 
   if (loading) {
     return (
@@ -74,6 +155,48 @@ export default function MemberProfileScreen() {
           </Text>
         ) : null}
       </View>
+
+      {yearbookId ? (
+        <View style={styles.section}>
+          <Text variant="label" color="secondary" style={styles.sectionTitle}>
+            Prompt answers
+          </Text>
+          <Text variant="caption" color="secondary" style={styles.sectionHint}>
+            What they shared in this yearbook (submitted responses only).
+          </Text>
+          {promptsLoading ? (
+            <View style={styles.promptsLoading}>
+              <ActivityIndicator color={theme.colors.primary} />
+            </View>
+          ) : promptRows.length === 0 ? (
+            <Text variant="body" color="secondary" style={styles.emptyPrompts}>
+              No prompt answers yet.
+            </Text>
+          ) : (
+            <View style={styles.promptList}>
+              {promptRows.map(({ prompt, draft }) => (
+                <View
+                  key={prompt.id}
+                  style={[styles.promptCard, { borderColor: theme.colors.borderMuted, backgroundColor: theme.colors.surfaceGlass }]}
+                >
+                  <Text variant="label" color="secondary" style={styles.promptQuestion}>
+                    {prompt.text}
+                  </Text>
+                  {prompt.type === 'photo' && draft.photoURL ? (
+                    <Image source={{ uri: draft.photoURL }} style={styles.promptPhoto} resizeMode="cover" />
+                  ) : null}
+                  {draft.content?.trim() ? (
+                    <Text variant="body" style={styles.promptAnswer}>
+                      {draft.content.trim()}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
+
       {Object.keys(socialLinks).length > 0 ? (
         <View style={styles.section}>
           <Text variant="label" color="secondary" style={styles.sectionTitle}>
@@ -83,34 +206,24 @@ export default function MemberProfileScreen() {
             {Object.entries(socialLinks).map(([key, value]) => {
               if (!value?.trim()) return null;
               const url = resolveSocialUrl(key, value);
-              const display = socialLinkDisplayText(key, value);
-              const a11y = `${SOCIAL_LABELS[key] ?? key}, ${display}`;
+              if (!url) return null;
+              const label = SOCIAL_LABELS[key] ?? key;
+              const { background, iconColor } = socialPlatformChipStyle(key);
               return (
                 <Pressable
                   key={key}
                   accessibilityRole="link"
-                  accessibilityLabel={a11y}
-                  onPress={() => url && Linking.openURL(url)}
+                  accessibilityLabel={`Open ${label}`}
+                  hitSlop={8}
+                  onPress={() => Linking.openURL(url)}
                   style={({ pressed }) => [
-                    styles.socialChip,
-                    {
-                      backgroundColor: theme.colors.surfaceGlass,
-                      borderColor: theme.colors.border,
-                      opacity: pressed ? 0.85 : 1,
-                    },
+                    styles.socialHit,
+                    { opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] },
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.socialIconCircle,
-                      { backgroundColor: theme.colors.borderMuted },
-                    ]}
-                  >
-                    <SocialPlatformIcon platform={key} size={24} />
+                  <View style={[styles.socialIconCircle, { backgroundColor: background }]}>
+                    <SocialPlatformIcon platform={key} size={28} color={iconColor} />
                   </View>
-                  <Text variant="caption" color="secondary" numberOfLines={1} style={styles.socialChipLabel}>
-                    {display}
-                  </Text>
                 </Pressable>
               );
             })}
@@ -135,32 +248,51 @@ const styles = StyleSheet.create({
   name: { marginBottom: 8 },
   bio: { textAlign: 'center', paddingHorizontal: 24 },
   city: { textAlign: 'center', marginTop: 8, paddingHorizontal: 24 },
-  section: { marginTop: 16 },
-  sectionTitle: { marginBottom: 8 },
+  section: { marginTop: 8, marginBottom: 8 },
+  sectionTitle: { marginBottom: 6 },
+  sectionHint: { marginBottom: 12 },
+  promptsLoading: { paddingVertical: 20, alignItems: 'center' },
+  emptyPrompts: { paddingVertical: 8 },
+  promptList: { gap: 12 },
+  promptCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    overflow: 'hidden',
+  },
+  promptQuestion: { marginBottom: 10 },
+  promptPhoto: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#1a1a1a',
+  },
+  promptAnswer: { lineHeight: 22 },
   socialRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
-  },
-  socialChip: {
+    gap: 16,
     alignItems: 'center',
-    width: 88,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    borderWidth: 1,
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  socialHit: {
+    minWidth: 56,
+    minHeight: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   socialIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  socialChipLabel: {
-    textAlign: 'center',
-    maxWidth: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

@@ -73,7 +73,11 @@ export default function MembersTab() {
   };
 
   const handleMemberPress = (memberUserId: string) => {
-    router.push({ pathname: '/(app)/profile/[userId]', params: { userId: memberUserId } });
+    if (!id) return;
+    router.push({
+      pathname: '/(app)/profile/[userId]',
+      params: { userId: memberUserId, yearbookId: id },
+    });
   };
 
   if (loading) {

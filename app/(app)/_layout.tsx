@@ -1,6 +1,6 @@
-import { Stack } from 'expo-router';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { NavFadeBar } from '@/src/design-system';
+import { Stack } from 'expo-router';
 
 export default function AppLayout() {
   const { theme } = useTheme();

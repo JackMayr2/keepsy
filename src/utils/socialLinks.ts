@@ -1,3 +1,17 @@
+/** Solid chip styling for profile / icon-only social buttons. */
+export function socialPlatformChipStyle(platformKey: string): { background: string; iconColor: string } {
+  switch (platformKey) {
+    case 'instagram':
+      return { background: '#E4405F', iconColor: '#FFFFFF' };
+    case 'twitter':
+      return { background: '#000000', iconColor: '#FFFFFF' };
+    case 'linkedin':
+      return { background: '#0A66C2', iconColor: '#FFFFFF' };
+    default:
+      return { background: '#6B7280', iconColor: '#FFFFFF' };
+  }
+}
+
 /**
  * Normalize user-entered social values into a safe https URL for Linking.openURL.
  */
