@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Alert, Image, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbook } from '@/src/hooks/useYearbook';
-import { updateYearbook } from '@/src/services/firestore';
+import { getMemberRole, leaveYearbook, updateYearbook } from '@/src/services/firestore';
+import type { YearbookMemberRole } from '@/src/types/yearbook.types';
 import { uploadYearbookCoverFromRemoteUrl } from '@/src/services/storage';
 import { shouldRehostYearbookCoverUrl } from '@/src/utils/yearbookCoverUrl';
 import { generateYearbookVisualOptions } from '@/src/services/openai';
@@ -14,8 +17,12 @@ import { useTheme } from '@/src/contexts/ThemeContext';
 
 export default function YearbookSettingsScreen() {
   const id = useYearbookId();
+  const router = useRouter();
+  const { userId } = useAuth();
   const { theme } = useTheme();
   const { yearbook, loading, refresh } = useYearbook(id);
+  const [myRole, setMyRole] = useState<YearbookMemberRole | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,6 +46,14 @@ export default function YearbookSettingsScreen() {
       setGeneratedUrls([]);
     }
   }, [yearbook]);
+
+  useEffect(() => {
+    if (!id || !userId) {
+      setMyRole(null);
+      return;
+    }
+    getMemberRole(id, userId).then(setMyRole);
+  }, [id, userId]);
 
   const handleGenerateCover = async () => {
     if (!aiPrompt.trim()) {
@@ -182,6 +197,45 @@ export default function YearbookSettingsScreen() {
       <Text variant="body" color="secondary" style={styles.hint}>
         Invite code: {yearbook.inviteCode}
       </Text>
+
+      {myRole && myRole !== 'creator' && userId ? (
+        <View style={[styles.leaveSection, { borderTopColor: theme.colors.borderMuted }]}>
+          <Text variant="label" color="secondary" style={styles.leaveLabel}>
+            Membership
+          </Text>
+          <Button
+            title={leaving ? 'Leaving…' : 'Leave yearbook'}
+            variant="outline"
+            onPress={() => {
+              Alert.alert(
+                'Leave yearbook?',
+                `You will leave "${yearbook.name}". You can rejoin with an invite code.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Leave',
+                    style: 'destructive',
+                    onPress: async () => {
+                      setLeaving(true);
+                      try {
+                        await leaveYearbook(id!, userId);
+                        router.replace('/(app)/(tabs)');
+                      } catch (e) {
+                        logger.error('YearbookSettings', 'leave failed', e);
+                        Alert.alert('Error', 'Could not leave this yearbook. Try again.');
+                      } finally {
+                        setLeaving(false);
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+            disabled={leaving}
+            style={styles.leaveBtn}
+          />
+        </View>
+      ) : null}
     </Container>
   );
 }
@@ -190,6 +244,9 @@ const styles = StyleSheet.create({
   sectionTitle: { marginBottom: 12 },
   saveBtn: { marginTop: 16 },
   hint: { marginTop: 24 },
+  leaveSection: { marginTop: 32, paddingTop: 24, borderTopWidth: 1 },
+  leaveLabel: { marginBottom: 10 },
+  leaveBtn: { alignSelf: 'flex-start' },
   aiSection: { marginTop: 8 },
   aiSetupHint: { lineHeight: 20, marginBottom: 8 },
   mono: { fontFamily: 'monospace' },

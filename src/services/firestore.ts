@@ -657,6 +657,100 @@ export function travelPhotoUrls(t: Pick<Travel, 'photoURL' | 'photoURLs'>): stri
   return t.photoURL ? [t.photoURL] : [];
 }
 
+const COLLAGE_MAX_SUBMISSIONS_SCAN = 120;
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function dedupePhotoUrls(urls: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const u of urls) {
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    out.push(u);
+  }
+  return out;
+}
+
+export type YearbookCollagePhotos = {
+  urls: string[];
+  /** Unique photo URLs (trips + prompt submissions; submissions scan capped). */
+  totalMemories: number;
+};
+
+function collectAllFlatPhotoUrlsForCollage(travels: Travel[], submissions: Draft[]): string[] {
+  const allFlat: string[] = [];
+  for (const t of travels) {
+    for (const u of travelPhotoUrls(t)) allFlat.push(u);
+  }
+  let scanned = 0;
+  for (const s of submissions) {
+    if (scanned >= COLLAGE_MAX_SUBMISSIONS_SCAN) break;
+    scanned += 1;
+    if (s.photoURL) allFlat.push(s.photoURL);
+  }
+  return allFlat;
+}
+
+/**
+ * Up to `max` image URLs for home-card collage: prefers variety (one random photo per trip,
+ * one random per submitting user), shuffles, then fills randomly if needed.
+ */
+export async function getYearbookCollagePhotoUrls(yearbookId: string, max = 4): Promise<YearbookCollagePhotos> {
+  const [travels, submissionsRaw] = await Promise.all([
+    getTravels(yearbookId),
+    getSubmissionsForPrompt(yearbookId),
+  ]);
+  const submissions = [...submissionsRaw].sort((a, b) => draftUpdatedAtMs(b) - draftUpdatedAtMs(a));
+
+  const allUnique = dedupePhotoUrls(collectAllFlatPhotoUrlsForCollage(travels, submissions));
+  const totalMemories = allUnique.length;
+
+  const diverse: string[] = [];
+
+  for (const t of shuffleArray(travels)) {
+    const urls = travelPhotoUrls(t);
+    if (urls.length === 0) continue;
+    diverse.push(urls[Math.floor(Math.random() * urls.length)]!);
+  }
+
+  const byUser = new Map<string, typeof submissions>();
+  for (const s of submissions) {
+    if (!s.photoURL) continue;
+    const list = byUser.get(s.userId) ?? [];
+    list.push(s);
+    byUser.set(s.userId, list);
+  }
+  for (const drafts of byUser.values()) {
+    const withPhoto = drafts.filter((d) => d.photoURL);
+    if (withPhoto.length === 0) continue;
+    const pick = withPhoto[Math.floor(Math.random() * withPhoto.length)]!;
+    diverse.push(pick.photoURL!);
+  }
+
+  let pool = dedupePhotoUrls(diverse);
+  pool = shuffleArray(pool);
+
+  if (pool.length < max) {
+    const seen = new Set(pool);
+    for (const u of shuffleArray(allUnique)) {
+      if (pool.length >= max) break;
+      if (seen.has(u)) continue;
+      seen.add(u);
+      pool.push(u);
+    }
+  }
+
+  return { urls: pool.slice(0, max), totalMemories };
+}
+
 export async function getTravels(yearbookId: string): Promise<Travel[]> {
   const db = getFirebaseDb();
   const q = query(

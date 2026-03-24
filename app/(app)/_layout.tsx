@@ -36,6 +36,10 @@ export default function AppLayout() {
         name="profile/edit"
         options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Settings' }}
       />
+      <Stack.Screen
+        name="ideas/[slug]"
+        options={{ headerShown: true, title: 'Ideas', headerBackTitle: 'Home' }}
+      />
       <Stack.Screen name="testing/database" />
     </Stack>
   );
