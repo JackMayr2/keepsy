@@ -29,6 +29,7 @@ import {
   createTravel,
   getYearbookMembers,
   getUser,
+  mergeTravelsWithPreviousServer,
   travelPhotoUrls,
   type Travel,
 } from '@/src/services/firestore';
@@ -202,7 +203,7 @@ export default function TravelsTab() {
     if (!id) return;
     try {
       const list = await getTravels(id);
-      setTravels(list);
+      setTravels((prev) => mergeTravelsWithPreviousServer(list, prev));
       const uids = [...new Set(list.map((t) => t.userId))];
       const profiles = await Promise.all(uids.map((uid) => getUser(uid)));
       const byId: Record<string, TravelAuthorInfo> = {};
@@ -344,16 +345,35 @@ export default function TravelsTab() {
       const lngRaw = longitude.trim() ? parseFloat(norm(longitude)) : NaN;
       const latOk = Number.isFinite(latRaw) && latRaw >= -90 && latRaw <= 90;
       const lngOk = Number.isFinite(lngRaw) && lngRaw >= -180 && lngRaw <= 180;
-      await createTravel(id, userId, {
+      const placeTrimmed = placeName.trim() || null;
+      const captionTrimmed = caption.trim() || null;
+      const travelId = await createTravel(id, userId, {
         photoURLs,
-        caption: caption.trim() || null,
-        placeName: placeName.trim() || null,
-        notes: caption.trim() || null,
+        caption: captionTrimmed || null,
+        placeName: placeTrimmed,
+        notes: captionTrimmed || null,
         latitude: latOk ? latRaw : null,
         longitude: lngOk ? lngRaw : null,
       });
+      const optimisticTravel: Travel = {
+        id: travelId,
+        yearbookId: id,
+        userId,
+        photoURL: photoURLs[0] ?? null,
+        photoURLs: photoURLs.length ? photoURLs : null,
+        placeName: placeTrimmed,
+        notes: captionTrimmed || null,
+        caption: captionTrimmed || null,
+        latitude: latOk ? latRaw : null,
+        longitude: lngOk ? lngRaw : null,
+        taggedUserIds: [],
+        createdAt: new Date(),
+      };
+      setTravels((prev) =>
+        mergeTravelsWithPreviousServer([optimisticTravel], prev.filter((t) => t.id !== travelId))
+      );
       resetAddForm();
-      load();
+      await load();
     } catch (e) {
       logger.error('TravelsTab', 'add failed', e);
       Alert.alert('Error', 'Could not save trip. Try again.');
@@ -636,6 +656,7 @@ export default function TravelsTab() {
       {activeTab === 'map' && Platform.OS !== 'web' && (
         <View style={StyleSheet.absoluteFill}>
           <MapView
+            key={travels.map((t) => t.id).join('|')}
             ref={mapRef}
             style={StyleSheet.absoluteFill}
             initialRegion={
@@ -1183,7 +1204,7 @@ export default function TravelsTab() {
                     }}
                   >
                     {fullscreenGallery.urls.map((uri, i) => (
-                      <View key={`fs-web-${i}`} style={[styles.fullscreenPage, { width: windowWidth, height: fsH }]}>
+                      <View key={`fs-web-${i}-${uri}`} style={[styles.fullscreenPage, { width: windowWidth, height: fsH }]}>
                         <FullscreenZoomablePhoto
                           uri={uri}
                           width={windowWidth}
@@ -1207,7 +1228,7 @@ export default function TravelsTab() {
                     }}
                   >
                     {fullscreenGallery.urls.map((uri, i) => (
-                      <View key={`fs-n-${i}`} style={[styles.fullscreenPage, { height: fsH }]}>
+                      <View key={`fs-n-${i}-${uri}`} style={[styles.fullscreenPage, { height: fsH }]}>
                         <FullscreenZoomablePhoto
                           uri={uri}
                           width={windowWidth}

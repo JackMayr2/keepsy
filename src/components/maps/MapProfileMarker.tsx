@@ -77,9 +77,10 @@ export function MapProfileMarker({
   const accent = variant === 'home' ? '#22C55E' : '#7C6BB5';
 
   useEffect(() => {
+    setTracksViewChanges(true);
     const t = setTimeout(() => setTracksViewChanges(false), Platform.OS === 'android' ? 800 : 600);
     return () => clearTimeout(t);
-  }, [photoURL]);
+  }, [photoURL, coordinate.latitude, coordinate.longitude]);
 
   return (
     <Marker

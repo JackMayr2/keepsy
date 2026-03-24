@@ -110,7 +110,7 @@ export function FullscreenZoomablePhoto({
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.box, { width, height }]}>
-        <Image source={{ uri }} style={[styles.image, fittedSize]} resizeMode="contain" />
+        <Image key={uri} source={{ uri }} style={[styles.image, fittedSize]} resizeMode="contain" />
       </View>
     );
   }
@@ -131,6 +131,7 @@ export function FullscreenZoomablePhoto({
         onUpdate={onZoomUpdate}
       >
         <Image
+          key={uri}
           source={{ uri }}
           style={[styles.image, fittedSize]}
           resizeMethod="scale"

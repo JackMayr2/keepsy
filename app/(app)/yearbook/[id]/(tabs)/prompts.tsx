@@ -9,6 +9,8 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Keyboard,
+  InteractionManager,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import * as ImagePicker from 'expo-image-picker';
@@ -80,10 +82,15 @@ export default function PromptsTab() {
       } else {
         await saveDraft(id, selected.id, userId, answer, 'submitted');
       }
+      Keyboard.dismiss();
       setSelected(null);
       setAnswer('');
       setPhotoUri(null);
-      refresh();
+      // Let the modal dismiss / keyboard teardown finish before re-fetching (avoids iOS UI jank).
+      await new Promise<void>((resolve) => {
+        InteractionManager.runAfterInteractions(() => resolve());
+      });
+      await refresh({ silent: true });
     } catch (e) {
       logger.error('PromptsTab', 'submit failed', e);
       Alert.alert('Error', 'Could not submit. Try again.');
@@ -126,6 +133,10 @@ export default function PromptsTab() {
           setAnswer(mine.content ?? '');
           if (mine.photoURL) setPhotoUri(mine.photoURL);
         }
+      } catch (e) {
+        logger.error('PromptsTab', 'load prompt modal failed', e);
+        setSubmissions([]);
+        Alert.alert('Error', 'Could not load answers for this prompt.');
       } finally {
         setLoadingSubmissions(false);
       }
@@ -140,7 +151,8 @@ export default function PromptsTab() {
     );
   }
 
-  const asyncBusy = saving || loadingSubmissions;
+  /** Full-screen only while saving — not while loading peer submissions (that was a modal blocker). */
+  const asyncBusy = saving;
 
   const modalScrollContent = (
     <>
@@ -218,7 +230,10 @@ export default function PromptsTab() {
           <Button
             title="Cancel"
             variant="ghost"
-            onPress={() => setSelected(null)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setSelected(null);
+            }}
             style={styles.modalActionBtn}
           />
         </View>
@@ -294,7 +309,10 @@ export default function PromptsTab() {
         <View style={styles.modalOverlay}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            onPress={() => setSelected(null)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setSelected(null);
+            }}
             accessibilityLabel="Close prompt"
           />
           <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>

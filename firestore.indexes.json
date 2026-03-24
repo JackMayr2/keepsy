@@ -9,6 +9,15 @@
       ]
     },
     {
+      "collectionGroup": "drafts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "yearbookId", "order": "ASCENDING" },
+        { "fieldPath": "promptId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "travels",
       "queryScope": "COLLECTION",
       "fields": [

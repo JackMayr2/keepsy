@@ -422,13 +422,18 @@ export async function getSubmissionsForPrompt(
   promptId?: string
 ): Promise<Draft[]> {
   const db = getFirebaseDb();
-  const q = query(
-    collection(db, DRAFTS),
-    where('yearbookId', '==', yearbookId),
-    where('status', '==', 'submitted')
-  );
+  // Prefer a narrow query when possible — avoids loading every submission in the yearbook (JS freeze).
+  const constraints =
+    promptId != null && promptId !== ''
+      ? [
+          where('yearbookId', '==', yearbookId),
+          where('promptId', '==', promptId),
+          where('status', '==', 'submitted'),
+        ]
+      : [where('yearbookId', '==', yearbookId), where('status', '==', 'submitted')];
+  const q = query(collection(db, DRAFTS), ...constraints);
   const snap = await getDocs(q);
-  let list = snap.docs.map((d) => {
+  const list = snap.docs.map((d) => {
     const data = d.data();
     return {
       id: d.id,
@@ -441,7 +446,6 @@ export async function getSubmissionsForPrompt(
       updatedAt: data.updatedAt?.toDate?.() ?? data.updatedAt,
     };
   });
-  if (promptId) list = list.filter((x) => x.promptId === promptId);
   return list;
 }
 
@@ -617,10 +621,39 @@ export type Travel = {
   createdAt: unknown;
 };
 
+function travelCreatedAtToMs(x: unknown): number {
+  if (x instanceof Date) return x.getTime();
+  if (x && typeof (x as { toDate: () => Date }).toDate === 'function') {
+    return (x as { toDate: () => Date }).toDate().getTime();
+  }
+  return 0;
+}
+
+/** Newest first — matches `getTravels` ordering. */
+export function sortTravelsByCreatedAtDesc(list: Travel[]): Travel[] {
+  return [...list].sort((a, b) => travelCreatedAtToMs(b.createdAt) - travelCreatedAtToMs(a.createdAt));
+}
+
+/**
+ * Merge a server snapshot with previous client state. Server wins for ids present in both.
+ * Keeps client-only ids so a trip still appears if the collection query is briefly stale after create.
+ */
+export function mergeTravelsWithPreviousServer(server: Travel[], previous: Travel[]): Travel[] {
+  const byId = new Map<string, Travel>();
+  for (const t of server) byId.set(t.id, t);
+  for (const t of previous) {
+    if (!byId.has(t.id)) byId.set(t.id, t);
+  }
+  return sortTravelsByCreatedAtDesc([...byId.values()]);
+}
+
 /** Normalized photo list for UI (handles legacy single photoURL). */
 export function travelPhotoUrls(t: Pick<Travel, 'photoURL' | 'photoURLs'>): string[] {
   const arr = t.photoURLs;
-  if (Array.isArray(arr) && arr.length > 0) return arr.filter(Boolean) as string[];
+  if (Array.isArray(arr) && arr.length > 0) {
+    const filtered = arr.filter(Boolean) as string[];
+    return [...new Set(filtered)];
+  }
   return t.photoURL ? [t.photoURL] : [];
 }
 
@@ -653,15 +686,7 @@ export async function getTravels(yearbookId: string): Promise<Travel[]> {
       createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
     };
   });
-  list.sort((a, b) => {
-    const toMs = (x: unknown): number => {
-      if (x instanceof Date) return x.getTime();
-      if (x && typeof (x as { toDate: () => Date }).toDate === 'function') return (x as { toDate: () => Date }).toDate().getTime();
-      return 0;
-    };
-    return toMs(b.createdAt) - toMs(a.createdAt);
-  });
-  return list;
+  return sortTravelsByCreatedAtDesc(list);
 }
 
 export async function createTravel(

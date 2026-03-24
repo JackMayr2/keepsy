@@ -8,14 +8,15 @@ export function usePrompts(yearbookId: string | undefined, userId?: string | nul
   const [myDraftsByPromptId, setMyDraftsByPromptId] = useState<Record<string, Draft>>({});
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     if (!yearbookId) {
       setPrompts([]);
       setMyDraftsByPromptId({});
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       try {
         await ensureDefaultPrompts(yearbookId);
@@ -41,7 +42,7 @@ export function usePrompts(yearbookId: string | undefined, userId?: string | nul
         setMyDraftsByPromptId({});
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [yearbookId, userId]);
 

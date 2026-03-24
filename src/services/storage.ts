@@ -24,6 +24,11 @@ const PROMPT_IMAGE_PATH = (yearbookId: string, promptId: string, userId: string)
 const TRAVEL_IMAGE_PATH = (yearbookId: string, userId: string, suffix: string) =>
   `yearbooks/${yearbookId}/travels/${userId}_${suffix}.jpg`;
 
+/** Unique per object; parallel uploads can share the same `Date.now()` ms. */
+function uniqueTravelImageSuffix(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 const YEARBOOK_COVER_PATH = (yearbookId: string) => `yearbooks/${yearbookId}/cover.jpg`;
 
 /**
@@ -71,8 +76,7 @@ export async function uploadTravelImage(
   imageUri: string
 ): Promise<string> {
   const storage = getFirebaseStorage();
-  const suffix = Date.now();
-  const storageRef = ref(storage, TRAVEL_IMAGE_PATH(yearbookId, userId, String(suffix)));
+  const storageRef = ref(storage, TRAVEL_IMAGE_PATH(yearbookId, userId, uniqueTravelImageSuffix()));
 
   const { blob, contentType } = await fetchImageBlobForStorage(imageUri);
 
