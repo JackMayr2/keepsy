@@ -1,0 +1,13 @@
+Subject: Reminder: {{YEARBOOK_NAME}} on Keepsy
+
+Hi {{RECIPIENT_NAME}},
+
+Quick reminder — you're invited to add your memories to "{{YEARBOOK_NAME}}" on Keepsy.
+
+Invite code: {{INVITE_CODE}}
+
+Open in the app: {{YEARBOOK_JOIN_LINK}}
+Get Keepsy: {{APP_DOWNLOAD_URL}}
+
+Thanks,
+{{INVITER_NAME}}

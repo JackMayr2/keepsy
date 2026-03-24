@@ -15,6 +15,10 @@ export interface ContainerProps {
   style?: StyleProp<ViewStyle>;
   /** Extra bottom padding (e.g. for floating tab bar: TAB_BAR_CONTENT_HEIGHT) */
   extraBottomPadding?: number;
+  /** Positive pushes content down; negative pulls content up. */
+  contentTopOffset?: number;
+  /** Use safe-area top inset instead of nav header height. */
+  ignoreHeaderHeight?: boolean;
   backgroundPreset?: BrandBackgroundPreset;
 }
 
@@ -23,12 +27,14 @@ export function Container({
   scroll = false,
   style,
   extraBottomPadding = 0,
+  contentTopOffset = 0,
+  ignoreHeaderHeight = false,
   backgroundPreset = 'daydream',
 }: ContainerProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const topInset = headerHeight > 0 ? headerHeight : insets.top;
+  const topInset = ignoreHeaderHeight ? insets.top : headerHeight > 0 ? headerHeight : insets.top;
   const { spacing } = theme;
 
   const containerStyle = {
@@ -41,7 +47,7 @@ export function Container({
   const contentStyle = {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + topInset,
+    paddingTop: spacing.xl + topInset + contentTopOffset,
   };
 
   if (scroll) {

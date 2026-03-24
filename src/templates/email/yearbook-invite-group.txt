@@ -1,0 +1,16 @@
+Subject: Join {{YEARBOOK_NAME}} on Keepsy
+
+Hi {{RECIPIENT_NAME}},
+
+{{INVITER_NAME}} invited you to contribute to "{{YEARBOOK_NAME}}" on Keepsy — a shared yearbook for photos, prompts, and memories.
+
+Your invite code: {{INVITE_CODE}}
+
+If you already have Keepsy, open this link on your phone to join:
+{{YEARBOOK_JOIN_LINK}}
+
+If you don't have the app yet, download it here, then enter the code above:
+{{APP_DOWNLOAD_URL}}
+
+Thanks,
+The Keepsy team

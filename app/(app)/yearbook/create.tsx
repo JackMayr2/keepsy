@@ -10,7 +10,7 @@ import { shouldRehostYearbookCoverUrl } from '@/src/utils/yearbookCoverUrl';
 import { generateYearbookVisualOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { BrandLogo, DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Button, Input, Text, DatePickerField } from '@/src/components/ui';
 import { addMonths, toISODateString } from '@/src/utils/dateFormat';
 import type { YearbookType } from '@/src/types/yearbook.types';
@@ -36,6 +36,19 @@ const YEARBOOK_TYPES: Array<{ value: YearbookType; label: string }> = [
   { value: 'wedding', label: 'Wedding' },
   { value: 'other', label: 'Other' },
 ];
+
+const YEARBOOK_TYPE_ICONS: Record<YearbookType, { ios: string; android: string; web: string }> = {
+  college: { ios: 'graduationcap.fill', android: 'school', web: 'school' },
+  workplace: { ios: 'briefcase.fill', android: 'work', web: 'work' },
+  family: { ios: 'house.fill', android: 'home', web: 'home' },
+  friends: { ios: 'person.2.fill', android: 'groups', web: 'groups' },
+  holiday: { ios: 'sparkles', android: 'celebration', web: 'celebration' },
+  'sports-team': { ios: 'sportscourt.fill', android: 'sports_soccer', web: 'sports_soccer' },
+  'club-org': { ios: 'person.3.fill', android: 'diversity_3', web: 'diversity_3' },
+  travel: { ios: 'airplane', android: 'flight', web: 'flight' },
+  wedding: { ios: 'heart.fill', android: 'favorite', web: 'favorite' },
+  other: { ios: 'tag.fill', android: 'label', web: 'label' },
+};
 
 function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -190,6 +203,7 @@ export default function CreateYearbookScreen() {
   const [dueDate, setDueDate] = useState(defaultDue);
 
   const [aiPrompt, setAiPrompt] = useState('');
+  const [coverMode, setCoverMode] = useState<'photo' | 'ai'>('photo');
   const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
   const [selectedAiUrl, setSelectedAiUrl] = useState<string | null>(null);
 
@@ -338,11 +352,12 @@ export default function CreateYearbookScreen() {
   return (
     <View style={styles.flex}>
       <DeferredFullscreenLoader active={createBusy} />
-      <Container scroll style={styles.content}>
-        <BrandLogo size="sm" tagline="launch a signature yearbook" />
-        <Text variant="titleLarge" style={styles.title}>
-          {step === 1 ? 'Create yearbook' : 'Build your starter pack'}
-        </Text>
+      <Container scroll style={styles.content} ignoreHeaderHeight contentTopOffset={-12}>
+        {step === 2 ? (
+          <Text variant="titleLarge" style={styles.title}>
+            Build your starter pack
+          </Text>
+        ) : null}
 
         {step === 1 ? (
           <>
@@ -371,6 +386,11 @@ export default function CreateYearbookScreen() {
                         },
                       ]}
                     >
+                      <DSIcon
+                        name={YEARBOOK_TYPE_ICONS[option.value]}
+                        size={14}
+                        color={selected ? theme.colors.primary : theme.colors.textMuted}
+                      />
                       <Text
                         variant="caption"
                         style={{
@@ -404,23 +424,70 @@ export default function CreateYearbookScreen() {
               <Text variant="label" style={styles.aiLabel}>
                 Cover visual (optional)
               </Text>
-              <Button
-                title={selectedAiUrl ? 'Change from camera roll' : 'Choose from camera roll'}
-                variant="outline"
-                onPress={handlePickFromLibrary}
-                icon={<DSIcon name={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo' }} size={16} color={theme.colors.text} />}
-              />
+              <View style={styles.coverModeRow}>
+                <Pressable
+                  onPress={() => setCoverMode('photo')}
+                  style={[
+                    styles.coverModeChip,
+                    {
+                      borderColor: coverMode === 'photo' ? theme.colors.primary : theme.colors.borderMuted,
+                      backgroundColor: coverMode === 'photo' ? theme.colors.surfaceSecondary : theme.colors.surface,
+                    },
+                  ]}
+                >
+                  <DSIcon name={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo' }} size={14} color={coverMode === 'photo' ? theme.colors.primary : theme.colors.textMuted} />
+                  <Text variant="caption" style={{ color: coverMode === 'photo' ? theme.colors.primary : theme.colors.text, fontWeight: '700' }}>
+                    Choose photo
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setCoverMode('ai')}
+                  disabled={!openAiReady}
+                  style={[
+                    styles.coverModeChip,
+                    {
+                      borderColor: coverMode === 'ai' ? theme.colors.primary : theme.colors.borderMuted,
+                      backgroundColor: coverMode === 'ai' ? theme.colors.surfaceSecondary : theme.colors.surface,
+                      opacity: openAiReady ? 1 : 0.55,
+                    },
+                  ]}
+                >
+                  <DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={14} color={coverMode === 'ai' ? theme.colors.primary : theme.colors.textMuted} />
+                  <Text variant="caption" style={{ color: coverMode === 'ai' ? theme.colors.primary : theme.colors.text, fontWeight: '700' }}>
+                    Generate AI
+                  </Text>
+                </Pressable>
+              </View>
 
-              {openAiReady ? (
+              {coverMode === 'photo' ? (
+                <View style={styles.coverActionRow}>
+                  <Button
+                    title={selectedAiUrl ? 'Change photo' : 'Choose photo'}
+                    variant="outline"
+                    onPress={handlePickFromLibrary}
+                    icon={<DSIcon name={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo' }} size={16} color={theme.colors.text} />}
+                    style={styles.coverActionBtn}
+                  />
+                  {selectedAiUrl ? (
+                    <Button
+                      title="Clear"
+                      variant="ghost"
+                      onPress={() => setSelectedAiUrl(null)}
+                      icon={<DSIcon name={{ ios: 'xmark.circle', android: 'cancel', web: 'cancel' }} size={16} color={theme.colors.textMuted} />}
+                      style={styles.coverActionBtn}
+                    />
+                  ) : null}
+                </View>
+              ) : openAiReady ? (
                 <>
                   <Input
                     value={aiPrompt}
                     onChangeText={setAiPrompt}
-                    placeholder="e.g. warm collage of film photos and notebooks"
+                    placeholder="Describe your cover style..."
                     multiline
                   />
                   <Button
-                    title={generatedUrls.length ? 'Regenerate AI options' : 'Generate AI options'}
+                    title={generatedUrls.length ? 'Regenerate AI' : 'Generate AI'}
                     variant="outline"
                     onPress={handleGenerate}
                     loading={generating}
@@ -428,27 +495,28 @@ export default function CreateYearbookScreen() {
                     icon={<DSIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} color={theme.colors.text} />}
                     style={styles.genBtn}
                   />
-                  {generatedUrls.length > 0 && (
-                    <View style={styles.grid}>
-                      {generatedUrls.map((url) => (
-                        <Pressable
-                          key={url}
-                          style={[
-                            styles.gridItem,
-                            selectedAiUrl === url && { borderColor: theme.colors.primary },
-                          ]}
-                          onPress={() => setSelectedAiUrl(url)}
-                        >
-                          <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
                 </>
               ) : (
                 <Text variant="caption" color="secondary" style={styles.aiSetupHint}>
-                  Want AI options too? Add an OpenAI API key in `.env` using EXPO_PUBLIC_OPENAI_API_KEY.
+                  Add EXPO_PUBLIC_OPENAI_API_KEY in `.env` to enable AI cover generation.
                 </Text>
+              )}
+
+              {generatedUrls.length > 0 && coverMode === 'ai' && (
+                <View style={styles.grid}>
+                  {generatedUrls.map((url) => (
+                    <Pressable
+                      key={url}
+                      style={[
+                        styles.gridItem,
+                        selectedAiUrl === url && { borderColor: theme.colors.primary },
+                      ]}
+                      onPress={() => setSelectedAiUrl(url)}
+                    >
+                      <Image source={{ uri: url }} style={styles.gridImage} resizeMode="cover" />
+                    </Pressable>
+                  ))}
+                </View>
               )}
 
               {selectedAiUrl ? (
@@ -464,7 +532,7 @@ export default function CreateYearbookScreen() {
             </View>
 
             <Button
-              title="Next: Review starter pack"
+              title="Next"
               onPress={handleStepTwo}
               iconAfter={<DSIcon name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={16} color="#FFFFFF" />}
               style={styles.button}
@@ -531,12 +599,8 @@ export default function CreateYearbookScreen() {
                   </Pressable>
                 </View>
               ))}
-              <View style={styles.inlineRow}>
-                <View style={styles.inlineGrow}>
-                  <Input placeholder="Add superlative category" value={newSuperlative} onChangeText={setNewSuperlative} />
-                </View>
-                <Button title="Add" compact variant="outline" onPress={addSuperlative} />
-              </View>
+              <Input placeholder="Add superlative category" value={newSuperlative} onChangeText={setNewSuperlative} />
+              <Button title="Add superlative" compact variant="outline" onPress={addSuperlative} />
             </View>
 
             <View style={styles.footerRow}>
@@ -564,10 +628,10 @@ export default function CreateYearbookScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: {},
-  title: { marginBottom: 16 },
+  content: { paddingTop: 6 },
+  title: { marginBottom: 12 },
   stepHint: { marginBottom: 14, lineHeight: 20 },
-  typeSection: { marginBottom: 8 },
+  typeSection: { marginBottom: 10 },
   typeLabel: { marginBottom: 8 },
   typeWrap: {
     flexDirection: 'row',
@@ -575,14 +639,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  aiSection: { marginTop: 16 },
+  aiSection: { marginTop: 14 },
   aiLabel: { marginBottom: 8 },
   aiSetupHint: { lineHeight: 20, marginTop: 10 },
+  coverModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  coverModeChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  coverActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  coverActionBtn: { flex: 1 },
   genBtn: { marginTop: 8 },
   grid: {
     flexDirection: 'row',
@@ -624,7 +712,6 @@ const styles = StyleSheet.create({
   },
   itemTextWrap: { flex: 1 },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  inlineGrow: { flex: 1 },
   smallChip: {
     borderWidth: 1,
     borderRadius: 999,

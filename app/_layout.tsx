@@ -21,7 +21,13 @@ import { logger } from '@/src/utils/logger';
 const JOIN_PREFIX = 'yearbook://join/';
 function parseJoinCode(url: string | null): string | null {
   if (!url || !url.startsWith(JOIN_PREFIX)) return null;
-  return url.slice(JOIN_PREFIX.length).trim() || null;
+  const raw = url.slice(JOIN_PREFIX.length).trim();
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export { ErrorBoundary } from 'expo-router';

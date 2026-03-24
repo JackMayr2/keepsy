@@ -14,6 +14,7 @@ import {
   ensureDefaultPolls,
   ensureDefaultSuperlatives,
 } from '@/src/services/firestore';
+import { buildYearbookInviteShareMessage } from '@/src/config/keepsyLinks';
 import { logger } from '@/src/utils/logger';
 import type { YearbookMemberRole } from '@/src/types/yearbook.types';
 
@@ -57,9 +58,8 @@ export default function YearbookDetailLayout() {
   }, [id]);
 
   const canEdit = role === 'creator' || role === 'admin';
-  const inviteMessage = yearbook
-    ? `Join "${yearbook.name}" on Keepsy! Use code: ${yearbook.inviteCode}`
-    : '';
+  const inviteMessage =
+    yearbook != null ? buildYearbookInviteShareMessage(yearbook.name, yearbook.inviteCode) : '';
 
   const handleShare = () => {
     Share.share({

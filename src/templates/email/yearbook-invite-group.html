@@ -1,0 +1,36 @@
+<!--
+  Placeholders: RECIPIENT_NAME, INVITER_NAME, YEARBOOK_NAME, INVITE_CODE,
+  YEARBOOK_JOIN_LINK (e.g. yearbook://join/CODE), APP_DOWNLOAD_URL
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Join {{YEARBOOK_NAME}} on Keepsy</title>
+</head>
+<body style="margin:0;font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#111;background:#fafafa;padding:24px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+    <tr>
+      <td>
+        <p style="margin:0 0 16px;font-size:15px;">Hi {{RECIPIENT_NAME}},</p>
+        <p style="margin:0 0 16px;font-size:15px;">
+          <strong>{{INVITER_NAME}}</strong> invited you to contribute to <strong>{{YEARBOOK_NAME}}</strong> on Keepsy — a shared yearbook for photos, prompts, and memories.
+        </p>
+        <p style="margin:0 0 8px;font-size:14px;color:#444;">Your invite code</p>
+        <p style="margin:0 0 20px;font-size:22px;font-weight:700;letter-spacing:.04em;">{{INVITE_CODE}}</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#444;">Already have Keepsy?</p>
+        <p style="margin:0 0 20px;font-size:15px;">
+          <a href="{{YEARBOOK_JOIN_LINK}}" style="color:#0a66c2;">Open in Keepsy</a>
+          <span style="color:#888;font-size:13px;"> (tap on your phone)</span>
+        </p>
+        <p style="margin:0 0 8px;font-size:14px;color:#444;">Need the app?</p>
+        <p style="margin:0 0 0;font-size:15px;">
+          <a href="{{APP_DOWNLOAD_URL}}" style="color:#0a66c2;">Download Keepsy</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+  <p style="max-width:560px;margin:16px auto 0;text-align:center;font-size:12px;color:#888;">Keepsy — shared yearbooks that grow with your crew</p>
+</body>
+</html>

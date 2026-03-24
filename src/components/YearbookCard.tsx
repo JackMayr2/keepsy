@@ -8,6 +8,7 @@ import { DSIcon, DSText } from '@/src/design-system';
 import type { YearbookWithRole } from '@/src/types/yearbook.types';
 import type { YearbookMemberPreview } from '@/src/hooks/useYearbookMemberPreviews';
 import type { YearbookCollagePhotos } from '@/src/services/firestore';
+import { buildYearbookInviteShareMessage } from '@/src/config/keepsyLinks';
 
 type YearbookCardProps = {
   yearbook: YearbookWithRole;
@@ -58,7 +59,7 @@ export function YearbookCard({ yearbook, width, memberPreview, collage }: Yearbo
 
   const handleShare = () => {
     Share.share({
-      message: `Join "${yearbook.name}" on Keepsy! Use code: ${yearbook.inviteCode}`,
+      message: buildYearbookInviteShareMessage(yearbook.name, yearbook.inviteCode),
       title: 'Join my yearbook',
     });
   };
