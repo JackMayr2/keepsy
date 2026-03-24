@@ -17,6 +17,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { joinTutorialYearbook } from '@/src/tutorial/setup';
+import { TUTORIAL_YEARBOOK_ID } from '@/src/tutorial/constants';
 import { useYearbooks } from '@/src/hooks/useYearbooks';
 import { useYearbookMemberPreviews } from '@/src/hooks/useYearbookMemberPreviews';
 import { useYearbookCollagePhotos } from '@/src/hooks/useYearbookCollagePhotos';
@@ -81,6 +83,7 @@ export default function HomeScreen() {
   const [me, setMe] = useState<User | null>(null);
   const phraseIndex = useMemo(() => Math.floor(Math.random() * GREETING_PHRASES.length), [userId]);
   const [fabOpen, setFabOpen] = useState(false);
+  const [tutorialOpening, setTutorialOpening] = useState(false);
   const fabExpand = useRef(new Animated.Value(0)).current;
   const bubbleWave = useRef(new Animated.Value(0)).current;
 
@@ -134,6 +137,20 @@ export default function HomeScreen() {
 
   const openIdea = (slug: FeatureSlug) => {
     router.push({ pathname: '/(app)/ideas/[slug]', params: { slug } });
+  };
+
+  const openTutorial = async () => {
+    if (!userId) return;
+    setTutorialOpening(true);
+    try {
+      await joinTutorialYearbook(userId);
+      await refresh();
+      router.push({ pathname: '/(app)/yearbook/[id]', params: { id: TUTORIAL_YEARBOOK_ID } });
+    } catch (e) {
+      Alert.alert('Could not open tutorial', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setTutorialOpening(false);
+    }
   };
 
   const openExternal = (url: string, failMessage: string) => {
@@ -211,6 +228,35 @@ export default function HomeScreen() {
           <Text variant="body" color="secondary" style={styles.greetingLine}>
             {greeting}
           </Text>
+        </View>
+
+        <View style={{ paddingHorizontal: H_PADDING, marginBottom: 8 }}>
+          <Pressable
+            onPress={openTutorial}
+            disabled={tutorialOpening || !userId}
+            style={({ pressed }) => [
+              styles.tutorialCard,
+              {
+                borderColor: theme.colors.borderMuted,
+                backgroundColor: theme.colors.surface,
+                opacity: pressed ? 0.92 : tutorialOpening ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Text variant="label" color="secondary" style={styles.tutorialEyebrow}>
+              Interactive walkthrough
+            </Text>
+            <Text variant="title" style={styles.tutorialTitle}>
+              Try the Friends tutorial
+            </Text>
+            <Text variant="body" color="secondary" style={styles.tutorialBody}>
+              A sample yearbook with 20 demo friends. Your answers and trips save to your account — you will
+              not see other real users here.
+            </Text>
+            <Text variant="caption" color="primary" style={styles.tutorialCta}>
+              {tutorialOpening ? 'Opening…' : 'Open tutorial →'}
+            </Text>
+          </Pressable>
         </View>
 
         {sortedYearbooks.length === 0 ? (
@@ -538,6 +584,26 @@ const styles = StyleSheet.create({
   },
   greetingLine: {
     lineHeight: 22,
+  },
+  tutorialCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    marginTop: 4,
+  },
+  tutorialEyebrow: {
+    marginBottom: 6,
+    letterSpacing: 0.3,
+  },
+  tutorialTitle: {
+    marginBottom: 8,
+  },
+  tutorialBody: {
+    lineHeight: 20,
+  },
+  tutorialCta: {
+    marginTop: 12,
+    fontWeight: '600',
   },
   /** Full-bleed row: no horizontal padding so carousel isn’t clipped by a parent box */
   carouselBleed: {

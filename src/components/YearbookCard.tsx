@@ -232,6 +232,11 @@ export function YearbookCard({ yearbook, width, memberPreview, collage }: Yearbo
               <DSText variant="title" numberOfLines={2}>
                 {yearbook.name}
               </DSText>
+              {yearbook.isTutorial ? (
+                <DSText variant="caption" color="secondary" style={styles.tutorialBadge}>
+                  Tutorial · sample friends
+                </DSText>
+              ) : null}
             </View>
             <View style={[styles.descBlock, { minHeight: DESC_BLOCK_MIN }]}>
               <DSText variant="bodySmall" color="secondary" numberOfLines={1} style={styles.desc}>
@@ -426,6 +431,9 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     justifyContent: 'center',
+  },
+  tutorialBadge: {
+    marginTop: 4,
   },
   descBlock: {
     marginTop: 2,

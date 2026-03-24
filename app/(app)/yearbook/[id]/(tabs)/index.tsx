@@ -13,6 +13,8 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { getYearbookMembers, getUser } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import { loadTutorialMembersWithUsers } from '@/src/tutorial/personas';
 import { Container, Text } from '@/src/components/ui';
 import {
   DSIcon,
@@ -52,6 +54,11 @@ export default function MembersTab() {
 
   const load = async () => {
     if (!id) return;
+    if (isTutorialYearbook(id)) {
+      const withUsers = await loadTutorialMembersWithUsers(currentUserId ?? undefined, getUser);
+      setMembers(withUsers);
+      return;
+    }
     const list = await getYearbookMembers(id);
     const withUsers: MemberWithUser[] = await Promise.all(
       list.map(async (m) => ({

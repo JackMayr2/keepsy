@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getYearbookCollagePhotoUrls, type YearbookCollagePhotos } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import { TUTORIAL_COLLAGE_URLS } from '@/src/tutorial/demoContent';
 
 const emptyCollage: YearbookCollagePhotos = { urls: [], totalMemories: 0 };
 
@@ -21,6 +23,12 @@ export function useYearbookCollagePhotos(yearbookIds: string[]) {
       await Promise.all(
         yearbookIds.map(async (id) => {
           try {
+            if (isTutorialYearbook(id)) {
+              if (!cancelled) {
+                next[id] = { urls: [...TUTORIAL_COLLAGE_URLS], totalMemories: 28 };
+              }
+              return;
+            }
             const data = await getYearbookCollagePhotoUrls(id, 4);
             if (!cancelled) next[id] = data;
           } catch {

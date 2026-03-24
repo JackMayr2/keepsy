@@ -21,6 +21,9 @@ import {
   getUser,
   ensureDefaultSuperlatives,
 } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import { mergeTutorialSuperlativeNominations } from '@/src/tutorial/demoContent';
+import { loadTutorialMembersWithUsers } from '@/src/tutorial/personas';
 import { logger } from '@/src/utils/logger';
 import { Container, Text, Button } from '@/src/components/ui';
 import {
@@ -83,24 +86,30 @@ export default function SuperlativesTab() {
       } catch (e) {
         logger.warn('SuperlativesTab', 'ensureDefaultSuperlatives failed (may need Firestore rules)', e);
       }
-      const [supList, memberList] = await Promise.all([
-        getSuperlatives(id),
-        getYearbookMembers(id),
-      ]);
+      const supList = await getSuperlatives(id);
+      let memberList: MemberWithUser[];
+      if (isTutorialYearbook(id)) {
+        memberList = await loadTutorialMembersWithUsers(userId ?? undefined, getUser);
+      } else {
+        const raw = await getYearbookMembers(id);
+        memberList = await Promise.all(
+          raw.map(async (m) => ({
+            ...m,
+            user: await getUser(m.userId),
+          }))
+        );
+      }
       setSuperlatives(
-        supList.map((s) => ({
+        supList.map((s, idx) => ({
           id: s.id,
           category: s.category,
-          nominations: s.nominations ?? {},
+          nominations:
+            isTutorialYearbook(id) && userId
+              ? mergeTutorialSuperlativeNominations(idx, s.nominations ?? {}, userId)
+              : s.nominations ?? {},
         }))
       );
-      const withUsers: MemberWithUser[] = await Promise.all(
-        memberList.map(async (m) => ({
-          ...m,
-          user: await getUser(m.userId),
-        }))
-      );
-      setMembers(withUsers);
+      setMembers(memberList);
     } finally {
       if (showLoadingOverlay) setLoading(false);
     }

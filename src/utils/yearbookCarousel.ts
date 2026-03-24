@@ -1,4 +1,5 @@
 import type { YearbookWithRole } from '@/src/types/yearbook.types';
+import { isTutorialYearbook, TUTORIAL_YEARBOOK_ID } from '@/src/tutorial/constants';
 
 function parseDueDate(s: string | undefined): number | null {
   if (!s?.trim()) return null;
@@ -36,6 +37,10 @@ export function sortYearbooksForHomeCarousel(yearbooks: YearbookWithRole[]): Yea
 
   return [...decorated]
     .sort((a, b) => {
+      const aT = a.y.id === TUTORIAL_YEARBOOK_ID || isTutorialYearbook(a.y.id);
+      const bT = b.y.id === TUTORIAL_YEARBOOK_ID || isTutorialYearbook(b.y.id);
+      if (aT && !bT) return -1;
+      if (!aT && bT) return 1;
       const aUp = isDueUpcoming(a.due);
       const bUp = isDueUpcoming(b.due);
       if (aUp && !bUp) return -1;

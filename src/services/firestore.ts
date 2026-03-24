@@ -152,6 +152,7 @@ export async function getYearbook(id: string): Promise<Yearbook | null> {
     inviteCode: data.inviteCode ?? '',
     createdBy: data.createdBy ?? '',
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
+    isTutorial: data.isTutorial === true,
   };
 }
 
@@ -192,6 +193,38 @@ export async function leaveYearbook(yearbookId: string, userId: string): Promise
   for (const d of snap.docs) {
     await deleteDoc(d.ref);
   }
+}
+
+/** Only the yearbook creator may change another member’s role (not the creator’s own). */
+export async function updateYearbookMemberRoleByCreator(
+  yearbookId: string,
+  actorUserId: string,
+  targetUserId: string,
+  newRole: 'admin' | 'member'
+): Promise<void> {
+  const yb = await getYearbook(yearbookId);
+  if (!yb) throw new Error('Yearbook not found');
+  if (yb.createdBy !== actorUserId) throw new Error('Only the creator can change roles');
+  if (targetUserId === yb.createdBy) throw new Error('Cannot change the creator role');
+  const db = getFirebaseDb();
+  const ref = doc(db, YEARBOOK_MEMBERS, `${yearbookId}_${targetUserId}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Member not found');
+  await setDoc(ref, { ...snap.data(), role: newRole }, { merge: true });
+}
+
+/** Only the creator may remove another member (not themselves or the creator account). */
+export async function removeYearbookMemberByCreator(
+  yearbookId: string,
+  actorUserId: string,
+  targetUserId: string
+): Promise<void> {
+  const yb = await getYearbook(yearbookId);
+  if (!yb) throw new Error('Yearbook not found');
+  if (yb.createdBy !== actorUserId) throw new Error('Only the creator can remove members');
+  if (targetUserId === yb.createdBy) throw new Error('Cannot remove the creator');
+  const db = getFirebaseDb();
+  await deleteDoc(doc(db, YEARBOOK_MEMBERS, `${yearbookId}_${targetUserId}`));
 }
 
 function generateInviteCode(): string {
@@ -314,6 +347,7 @@ export async function getYearbookByInviteCode(code: string): Promise<Yearbook | 
     inviteCode: data.inviteCode ?? '',
     createdBy: data.createdBy ?? '',
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
+    isTutorial: data.isTutorial === true,
   };
 }
 
@@ -394,6 +428,38 @@ export async function ensureDefaultPrompts(yearbookId: string): Promise<void> {
       isDefault: true,
     });
   }
+}
+
+export async function createPromptForYearbook(
+  yearbookId: string,
+  text: string,
+  type: Prompt['type']
+): Promise<string> {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('Prompt text is required');
+  const existing = await getPrompts(yearbookId);
+  const maxOrder = existing.length ? Math.max(...existing.map((p) => p.order)) : -1;
+  const db = getFirebaseDb();
+  const ref = doc(collection(db, PROMPTS));
+  await setDoc(ref, {
+    yearbookId,
+    text: trimmed,
+    type,
+    order: maxOrder + 1,
+    isDefault: false,
+  });
+  return ref.id;
+}
+
+/** Deletes the prompt and all drafts that reference it. */
+export async function deletePromptAndDrafts(promptId: string): Promise<void> {
+  const db = getFirebaseDb();
+  const draftQ = query(collection(db, DRAFTS), where('promptId', '==', promptId));
+  const draftSnap = await getDocs(draftQ);
+  const batch = writeBatch(db);
+  draftSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, PROMPTS, promptId));
+  await batch.commit();
 }
 
 export async function saveDraft(
@@ -591,6 +657,31 @@ export async function ensureDefaultPolls(yearbookId: string): Promise<void> {
   }
 }
 
+export async function createPollForYearbook(
+  yearbookId: string,
+  question: string,
+  options: string[]
+): Promise<string> {
+  const q = question.trim();
+  const opts = options.map((x) => x.trim()).filter(Boolean);
+  if (!q || opts.length < 2) throw new Error('Add a question and at least two options');
+  const db = getFirebaseDb();
+  const ref = doc(collection(db, POLLS));
+  await setDoc(ref, { yearbookId, question: q, options: opts });
+  return ref.id;
+}
+
+/** Deletes the poll and all votes for it. */
+export async function deletePollAndVotes(pollId: string): Promise<void> {
+  const db = getFirebaseDb();
+  const voteQ = query(collection(db, POLL_VOTES), where('pollId', '==', pollId));
+  const voteSnap = await getDocs(voteQ);
+  const batch = writeBatch(db);
+  voteSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, POLLS, pollId));
+  await batch.commit();
+}
+
 // Superlatives
 const SUPERLATIVES = 'superlatives';
 
@@ -648,6 +739,19 @@ export async function ensureDefaultSuperlatives(yearbookId: string): Promise<voi
       nominations: {},
     });
   }
+}
+
+export async function createSuperlativeForYearbook(yearbookId: string, category: string): Promise<string> {
+  const c = category.trim();
+  if (!c) throw new Error('Category is required');
+  const db = getFirebaseDb();
+  const ref = doc(collection(db, SUPERLATIVES));
+  await setDoc(ref, { yearbookId, category: c, nominations: {} });
+  return ref.id;
+}
+
+export async function deleteSuperlativeById(superlativeId: string): Promise<void> {
+  await deleteDoc(doc(getFirebaseDb(), SUPERLATIVES, superlativeId));
 }
 
 export async function nominateSuperlative(

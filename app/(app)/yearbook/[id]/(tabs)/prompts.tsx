@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,6 +20,12 @@ import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { usePrompts } from '@/src/hooks/usePrompts';
 import { saveDraft, getSubmissionsForPrompt, getDraftForPrompt } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import {
+  getTutorialDemoSubmissionCountForPrompt,
+  mergeTutorialPromptSubmissions,
+} from '@/src/tutorial/demoContent';
+import { getDemoUser } from '@/src/tutorial/personas';
 import { uploadPromptImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
 import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
@@ -49,6 +55,10 @@ export default function PromptsTab() {
   const { navVisible, setNavVisible } = useYearbookNav();
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const { prompts, loading, refresh, myDraftsByPromptId } = usePrompts(id, userId);
+  const promptsSorted = useMemo(
+    () => [...prompts].sort((a, b) => a.order - b.order),
+    [prompts]
+  );
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
   const [selected, setSelected] = useState<Prompt | null>(null);
   const [answer, setAnswer] = useState('');
@@ -128,7 +138,12 @@ export default function PromptsTab() {
           getSubmissionsForPrompt(id, item.id),
           userId ? getDraftForPrompt(id, item.id, userId) : Promise.resolve(null),
         ]);
-        setSubmissions(list);
+        const orderIdx = promptsSorted.findIndex((p) => p.id === item.id);
+        const display =
+          isTutorialYearbook(id) && orderIdx >= 0
+            ? mergeTutorialPromptSubmissions(id, item.id, orderIdx, list, userId ?? undefined)
+            : list;
+        setSubmissions(display);
         if (mine) {
           setAnswer(mine.content ?? '');
           if (mine.photoURL) setPhotoUri(mine.photoURL);
@@ -162,7 +177,8 @@ export default function PromptsTab() {
       {submissions.length > 0 && (
         <View style={styles.submissionsSection}>
           <Text variant="label" color="secondary" style={styles.submissionsLabel}>
-            Answers from yearbook ({submissions.length})
+            {id && isTutorialYearbook(id) ? 'Sample answers from the crew' : 'Answers from yearbook'} (
+            {submissions.length})
           </Text>
           <ScrollView
             horizontal
@@ -171,20 +187,28 @@ export default function PromptsTab() {
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
           >
-            {submissions.map((s) => (
-              <View key={s.id} style={[styles.submissionChip, { backgroundColor: theme.colors.surfaceSecondary }]}>
-                {s.photoURL ? (
-                  <Image source={{ uri: s.photoURL }} style={styles.submissionThumb} />
-                ) : null}
-                {s.content ? (
-                  <Text variant="caption" numberOfLines={2} style={styles.submissionText}>
-                    {s.content}
-                  </Text>
-                ) : s.photoURL ? (
-                  <Text variant="caption" color="secondary">Photo</Text>
-                ) : null}
-              </View>
-            ))}
+            {submissions.map((s) => {
+              const author = getDemoUser(s.userId);
+              return (
+                <View key={s.id} style={[styles.submissionChip, { backgroundColor: theme.colors.surfaceSecondary }]}>
+                  {s.photoURL ? (
+                    <Image source={{ uri: s.photoURL }} style={styles.submissionThumb} />
+                  ) : null}
+                  {s.content ? (
+                    <Text variant="caption" numberOfLines={3} style={styles.submissionText}>
+                      {s.content}
+                    </Text>
+                  ) : s.photoURL ? (
+                    <Text variant="caption" color="secondary">Photo</Text>
+                  ) : null}
+                  {author ? (
+                    <Text variant="caption" color="secondary" numberOfLines={1} style={styles.submissionAuthor}>
+                      {author.firstName}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })}
           </ScrollView>
         </View>
       )}
@@ -268,6 +292,11 @@ export default function PromptsTab() {
           const isSubmitted = draft?.status === 'submitted';
           const hasPreview =
             !!draft && (Boolean(draft.photoURL) || draft.content.trim().length > 0);
+          const orderIdx = promptsSorted.findIndex((p) => p.id === item.id);
+          const tutorialSampleCount =
+            id && isTutorialYearbook(id) && orderIdx >= 0
+              ? getTutorialDemoSubmissionCountForPrompt(orderIdx)
+              : 0;
           return (
             <Pressable
               style={[styles.promptRow, { borderBottomColor: theme.colors.borderMuted }]}
@@ -288,6 +317,9 @@ export default function PromptsTab() {
               <Text variant="caption" color="muted" style={styles.promptMeta}>
                 {item.type === 'photo' ? 'Photo prompt' : 'Text prompt'}
                 {isSubmitted ? ' · Submitted' : hasPreview ? ' · Draft' : ''}
+                {tutorialSampleCount > 0
+                  ? ` · Sample friends answered (${tutorialSampleCount})`
+                  : ''}
               </Text>
               {hasPreview ? (
                 <View style={styles.promptPreview}>
@@ -419,8 +451,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     overflow: 'hidden',
   },
-  submissionThumb: { width: '100%', height: 72, borderRadius: 8, marginBottom: 6 },
+  submissionThumb: { width: '100%', height: 72, borderRadius: 8, marginBottom: 4 },
   submissionText: {},
+  submissionAuthor: { marginTop: 4, fontWeight: '600' },
   submissionsLoader: { marginVertical: 8, alignItems: 'center' },
   yourAnswerLabel: { marginBottom: 8 },
   modalActions: {

@@ -29,6 +29,8 @@ export interface Yearbook {
   inviteCode: string;
   createdBy: string;
   createdAt: Date | { seconds: number; nanoseconds: number };
+  /** Interactive demo yearbook — other real users’ activity is hidden in the client. */
+  isTutorial?: boolean;
 }
 
 export interface YearbookWithRole extends Yearbook {

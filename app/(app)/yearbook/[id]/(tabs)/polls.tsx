@@ -12,6 +12,8 @@ import {
   getPollResults,
   ensureDefaultPolls,
 } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import { tutorialPollDisplayCounts } from '@/src/tutorial/demoContent';
 import { logger } from '@/src/utils/logger';
 import { Container, Text } from '@/src/components/ui';
 import { DSIcon, DeferredFullscreenLoader, standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
@@ -61,9 +63,16 @@ export default function PollsTab() {
       }
       const list = await getPolls(id);
       const withVotes: PollWithVote[] = await Promise.all(
-        list.map(async (p) => {
+        list.map(async (p, pollIndex) => {
           const userVote = await getUserVote(p.id, userId);
-          const results = userVote !== null ? await getPollResults(p.id) : null;
+          let results: number[] | null = null;
+          if (userVote !== null) {
+            if (isTutorialYearbook(id)) {
+              results = tutorialPollDisplayCounts(pollIndex, p.options.length, userVote);
+            } else {
+              results = await getPollResults(p.id);
+            }
+          }
           return {
             id: p.id,
             question: p.question,

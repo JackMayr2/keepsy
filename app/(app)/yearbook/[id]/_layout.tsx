@@ -17,6 +17,7 @@ import {
 import { buildYearbookInviteShareMessage } from '@/src/config/keepsyLinks';
 import { logger } from '@/src/utils/logger';
 import type { YearbookMemberRole } from '@/src/types/yearbook.types';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
 
 const HEADER_CONTENT_HEIGHT = 44;
 
@@ -42,7 +43,7 @@ export default function YearbookDetailLayout() {
 
   // Seed prompts, polls, and superlatives when opening a yearbook (for existing yearbooks that had none)
   useEffect(() => {
-    if (!id) return;
+    if (!id || isTutorialYearbook(id)) return;
     const seed = async () => {
       try {
         await Promise.all([
@@ -57,7 +58,7 @@ export default function YearbookDetailLayout() {
     seed();
   }, [id]);
 
-  const canEdit = role === 'creator' || role === 'admin';
+  const canEdit = (role === 'creator' || role === 'admin') && !yearbook?.isTutorial;
   const inviteMessage =
     yearbook != null ? buildYearbookInviteShareMessage(yearbook.name, yearbook.inviteCode) : '';
 

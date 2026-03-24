@@ -2,6 +2,9 @@ import { Container, SocialPlatformIcon, Text } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { DeferredFullscreenLoader } from '@/src/design-system';
 import { getDraftsForUser, getPrompts, getUser } from '@/src/services/firestore';
+import { isDemoUserId, isTutorialYearbook } from '@/src/tutorial/constants';
+import { buildTutorialDemoProfilePromptRows } from '@/src/tutorial/demoContent';
+import { getUserForTutorial } from '@/src/tutorial/personas';
 import type { Draft, Prompt } from '@/src/types/prompt.types';
 import type { User } from '@/src/types/user.types';
 import {
@@ -62,13 +65,37 @@ export default function MemberProfileScreen() {
       setLoading(false);
       return;
     }
-    getUser(profileUserId)
+    getUserForTutorial(profileUserId, getUser)
       .then(setUser)
       .finally(() => setLoading(false));
   }, [profileUserId]);
 
   useEffect(() => {
     if (!profileUserId || !yearbookId) {
+      setPromptRows([]);
+      setPromptsLoading(false);
+      return;
+    }
+    if (isDemoUserId(profileUserId) && isTutorialYearbook(yearbookId)) {
+      let cancelled = false;
+      setPromptsLoading(true);
+      (async () => {
+        try {
+          const plist = await getPrompts(yearbookId);
+          if (cancelled) return;
+          const rows = buildTutorialDemoProfilePromptRows(yearbookId, profileUserId, plist);
+          if (!cancelled) setPromptRows(rows);
+        } catch {
+          if (!cancelled) setPromptRows([]);
+        } finally {
+          if (!cancelled) setPromptsLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (isDemoUserId(profileUserId)) {
       setPromptRows([]);
       setPromptsLoading(false);
       return;

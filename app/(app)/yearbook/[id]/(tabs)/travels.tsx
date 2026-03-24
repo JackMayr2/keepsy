@@ -33,6 +33,9 @@ import {
   travelPhotoUrls,
   type Travel,
 } from '@/src/services/firestore';
+import { isTutorialYearbook } from '@/src/tutorial/constants';
+import { getTutorialDemoTravels } from '@/src/tutorial/demoContent';
+import { DEMO_PERSONAS, getUserForTutorial, TUTORIAL_HOST } from '@/src/tutorial/personas';
 import { uploadTravelImage } from '@/src/services/storage';
 import { getLocationFromImageAsset } from '@/src/utils/imageLocation';
 import { jitteredCoordinatesForPins } from '@/src/utils/mapPinLayout';
@@ -203,9 +206,14 @@ export default function TravelsTab() {
     if (!id) return;
     try {
       const list = await getTravels(id);
-      setTravels((prev) => mergeTravelsWithPreviousServer(list, prev));
-      const uids = [...new Set(list.map((t) => t.userId))];
-      const profiles = await Promise.all(uids.map((uid) => getUser(uid)));
+      const tutorialExtras =
+        isTutorialYearbook(id) && userId ? getTutorialDemoTravels() as Travel[] : [];
+      const listFiltered =
+        isTutorialYearbook(id) && userId ? list.filter((t) => t.userId === userId) : list;
+      const mergedList = [...tutorialExtras, ...listFiltered];
+      setTravels((prev) => mergeTravelsWithPreviousServer(mergedList, prev));
+      const uids = [...new Set(mergedList.map((t) => t.userId))];
+      const profiles = await Promise.all(uids.map((uid) => getUserForTutorial(uid, getUser)));
       const byId: Record<string, TravelAuthorInfo> = {};
       uids.forEach((uid, i) => {
         const u = profiles[i];
@@ -226,23 +234,69 @@ export default function TravelsTab() {
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [id, userId]);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     (async () => {
       try {
+        if (isTutorialYearbook(id)) {
+          const demos = [TUTORIAL_HOST, ...DEMO_PERSONAS];
+          const homes: {
+            userId: string;
+            name: string;
+            label: string;
+            latitude: number;
+            longitude: number;
+            photoURL?: string | null;
+          }[] = [];
+          for (const u of demos) {
+            const lat = u.homeLatitude;
+            const lng = u.homeLongitude;
+            if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+            const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Member';
+            homes.push({
+              userId: u.id,
+              name,
+              label: u.city?.trim() || `${name}'s home`,
+              latitude: lat,
+              longitude: lng,
+              photoURL: u.photoURL ?? null,
+            });
+          }
+          if (userId) {
+            const me = await getUser(userId);
+            if (
+              me?.homeLatitude != null &&
+              me?.homeLongitude != null &&
+              Number.isFinite(me.homeLatitude) &&
+              Number.isFinite(me.homeLongitude)
+            ) {
+              const name = [me.firstName, me.lastName].filter(Boolean).join(' ') || 'You';
+              homes.push({
+                userId,
+                name,
+                label: me.city?.trim() || `${name}'s home`,
+                latitude: me.homeLatitude,
+                longitude: me.homeLongitude,
+                photoURL: me.photoURL ?? null,
+              });
+            }
+          }
+          if (!cancelled) setMemberHomes(homes);
+          return;
+        }
         const members = await getYearbookMembers(id);
         const profiles = await Promise.all(members.map((m) => getUser(m.userId)));
-      const homes: {
-        userId: string;
-        name: string;
-        label: string;
-        latitude: number;
-        longitude: number;
-        photoURL?: string | null;
-      }[] = [];
+        const homes: {
+          userId: string;
+          name: string;
+          label: string;
+          latitude: number;
+          longitude: number;
+          photoURL?: string | null;
+        }[] = [];
         profiles.forEach((u, i) => {
           if (!u) return;
           const lat = u.homeLatitude;
@@ -250,7 +304,7 @@ export default function TravelsTab() {
           if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
           const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Member';
           homes.push({
-            userId: members[i].userId,
+            userId: members[i]!.userId,
             name,
             label: u.city?.trim() || `${name}'s home`,
             latitude: lat,
@@ -266,7 +320,7 @@ export default function TravelsTab() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, userId]);
 
   const removeTripPhotoAt = (index: number) => {
     setPhotoUris((prev) => prev.filter((_, i) => i !== index));
