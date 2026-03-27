@@ -1,7 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { DSIcon, NavFadeBar, NavIconButton } from '@/src/design-system';
+import { AppBackButton, NavFadeBar } from '@/src/design-system';
 
 export default function AppTabsLayout() {
   const { theme } = useTheme();
@@ -9,10 +9,9 @@ export default function AppTabsLayout() {
 
   const headerLeft = () => (
     <View style={{ paddingLeft: 8 }}>
-      <NavIconButton
+      <AppBackButton
         accessibilityLabel="Back to home"
         onPress={() => router.replace('/(app)')}
-        icon={<DSIcon name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={20} color={theme.colors.text} />}
       />
     </View>
   );

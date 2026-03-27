@@ -27,6 +27,9 @@ import type { User } from '@/src/types/user.types';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 const LIST_PADDING_BASE = 24;
+const YEARBOOK_HEADER_CONTENT_HEIGHT = 44;
+const YEARBOOK_HEADER_FADE_INSET = 20;
+const LIST_HORIZONTAL_PADDING = 16;
 
 type MemberWithUser = YearbookMember & { user: User | null };
 
@@ -40,6 +43,8 @@ export default function MembersTab() {
   const { navVisible, setNavVisible } = useYearbookNav();
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
+  const listPaddingTop =
+    insets.top + YEARBOOK_HEADER_CONTENT_HEIGHT + YEARBOOK_HEADER_FADE_INSET;
   const [members, setMembers] = useState<MemberWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -106,12 +111,19 @@ export default function MembersTab() {
   }
 
   return (
-    <Container>
+    <Container edgeToEdge>
       <DeferredFullscreenLoader active={refreshing} />
       <FlatList
         data={members}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
+        contentContainerStyle={[
+          styles.list,
+          {
+            paddingTop: listPaddingTop,
+            paddingBottom: listPaddingBottom,
+            paddingHorizontal: LIST_HORIZONTAL_PADDING,
+          },
+        ]}
         {...standardFlatListScrollProps}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}

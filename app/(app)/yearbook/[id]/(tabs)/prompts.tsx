@@ -36,6 +36,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/contexts/ThemeContext';
 
 const LIST_PADDING_BASE = 24;
+const YEARBOOK_HEADER_CONTENT_HEIGHT = 44;
+const YEARBOOK_HEADER_FADE_INSET = 20;
+const LIST_HORIZONTAL_PADDING = 16;
 /** Show full text in the list when at or below this length; longer answers get a trailing ellipsis. */
 const ANSWER_PREVIEW_FULL_MAX = 100;
 
@@ -60,6 +63,8 @@ export default function PromptsTab() {
     [prompts]
   );
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
+  const listPaddingTop =
+    insets.top + YEARBOOK_HEADER_CONTENT_HEIGHT + YEARBOOK_HEADER_FADE_INSET;
   const [selected, setSelected] = useState<Prompt | null>(null);
   const [answer, setAnswer] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -278,12 +283,19 @@ export default function PromptsTab() {
   const modalScrollBottomPad = 24 + insets.bottom;
 
   return (
-    <Container>
+    <Container edgeToEdge>
       <DeferredFullscreenLoader active={asyncBusy} />
       <FlatList
         data={prompts}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
+        contentContainerStyle={[
+          styles.list,
+          {
+            paddingTop: listPaddingTop,
+            paddingBottom: listPaddingBottom,
+            paddingHorizontal: LIST_HORIZONTAL_PADDING,
+          },
+        ]}
         {...standardFlatListScrollProps}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}

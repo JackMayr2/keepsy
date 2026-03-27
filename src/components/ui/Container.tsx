@@ -1,11 +1,11 @@
-import React, { ReactNode } from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
+import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import type { BrandBackgroundPreset } from '@/src/design-system';
-import { ScreenBackground } from '@/src/components/ui/ScreenBackground';
-import { AppKeyboardAwareScrollView } from '@/src/components/ui/AppKeyboardAwareScrollView';
+import { useHeaderHeight } from '@react-navigation/elements';
+import React, { ReactNode } from 'react';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_BOTTOM = 32;
 
@@ -13,6 +13,8 @@ export interface ContainerProps {
   children: ReactNode;
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Removes default horizontal/top insets so content can render edge-to-edge under overlays. */
+  edgeToEdge?: boolean;
   /** Extra bottom padding (e.g. for floating tab bar: TAB_BAR_CONTENT_HEIGHT) */
   extraBottomPadding?: number;
   /** Positive pushes content down; negative pulls content up. */
@@ -26,6 +28,7 @@ export function Container({
   children,
   scroll = false,
   style,
+  edgeToEdge = false,
   extraBottomPadding = 0,
   contentTopOffset = 0,
   ignoreHeaderHeight = false,
@@ -44,11 +47,17 @@ export function Container({
     overflow: 'hidden' as const,
   };
 
-  const contentStyle = {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + topInset + contentTopOffset,
-  };
+  const contentStyle = edgeToEdge
+    ? {
+        flex: 1,
+        paddingHorizontal: 0,
+        paddingTop: 0,
+      }
+    : {
+        flex: 1,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.xl + topInset + contentTopOffset,
+      };
 
   if (scroll) {
     const scrollPaddingBottom = DEFAULT_BOTTOM + extraBottomPadding + insets.bottom;

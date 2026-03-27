@@ -23,6 +23,7 @@ export { Skeleton, SkeletonBlock } from './components/Skeleton';
 export { GlassBar } from './components/GlassBar';
 export { NavFadeBar } from './components/NavFadeBar';
 export { NavIconButton } from './components/NavIconButton';
+export { AppBackButton } from './components/AppBackButton';
 export { SafeAreaTabBar } from './components/SafeAreaTabBar';
 export { BrandBackground } from './components/BrandBackground';
 export type { BrandBackgroundPreset } from './components/BrandBackground';

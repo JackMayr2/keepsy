@@ -11,9 +11,8 @@ import {
     resolveSocialUrl,
     socialPlatformChipStyle,
 } from '@/src/utils/socialLinks';
-import { HeaderBackButton } from '@react-navigation/elements';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 const SOCIAL_LABELS: Record<string, string> = {
@@ -34,27 +33,7 @@ export default function MemberProfileScreen() {
   const profileUserId = paramString(params.userId);
   const yearbookId = paramString(params.yearbookId);
 
-  const router = useRouter();
-  const navigation = useNavigation();
   const { theme } = useTheme();
-
-  const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    if (yearbookId) {
-      router.replace({ pathname: '/(app)/yearbook/[id]', params: { id: yearbookId } });
-      return;
-    }
-    router.replace('/(app)');
-  }, [router, yearbookId]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerLeft: (props) => <HeaderBackButton {...props} onPress={handleBack} />,
-    });
-  }, [navigation, handleBack]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [promptRows, setPromptRows] = useState<PromptAnswerRow[]>([]);

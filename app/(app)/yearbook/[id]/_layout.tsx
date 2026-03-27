@@ -84,7 +84,7 @@ export default function YearbookDetailLayout() {
 
   const customHeader = () => (
     <View style={[styles.customHeader, { height: headerHeight }]} pointerEvents="box-none">
-      <NavFadeBar edge="top" />
+      <NavFadeBar edge="top" bleed={56} />
       <View style={[styles.customHeaderInner, { paddingTop: insets.top }]}>
         <View style={styles.customHeaderRow}>
         <View style={[styles.headerSide, styles.headerSideLeft]}>
