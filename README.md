@@ -60,5 +60,5 @@ City / place search uses [Photon](https://photon.komoot.io) (OpenStreetMap data)
 - Yearbook settings (description, due date, cover image, invite code)
 - **`KeepsyBookLoader`** — **Lottie** book animation (`assets/lottie/book-with-turning-pages.json`), original colors; `size`, optional **`accessibilityLabel`** (no on-screen caption). Respects **Reduce Motion**.
 - **`LoadingState`** — primitive loader: **`fill`** = full-window `Modal` + dim + large Lottie **only** (no visible title/message; optional `title` / `message` / `accessibilityLabel` are for screen readers only). Prefer **`DeferredFullscreenLoader`** in UI.
-- **`DeferredFullscreenLoader`** — same as above after **`DEFERRED_LOADING_DELAY_MS` (500ms)**. Props: `active`, optional **`accessibilityLabel`** (VoiceOver), `delayMs`, `size`, `dimBackground`.
+- **`DeferredFullscreenLoader`** — same as above after **`DEFERRED_LOADING_DELAY_MS` (1500ms)**. Props: `active`, optional **`accessibilityLabel`** (VoiceOver), `delayMs`, `size`, `dimBackground`.
 - **`useDeferredLoading(active, delayMs?)`** — hook if you need the delayed boolean without the overlay component.

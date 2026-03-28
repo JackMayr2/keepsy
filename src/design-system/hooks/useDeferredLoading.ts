@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const DEFAULT_DELAY_MS = 500;
+const DEFAULT_DELAY_MS = 1500;
 
 /**
  * True only after `active` has been continuously true for at least `delayMs`.

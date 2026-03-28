@@ -5,7 +5,7 @@ import { LoadingState } from './LoadingState';
 export type DeferredFullscreenLoaderProps = {
   /** When true, may show the full-screen loader after the delay. */
   active: boolean;
-  /** Milliseconds `active` must stay true before the overlay appears. @default 500 */
+  /** Milliseconds `active` must stay true before the overlay appears. @default 1500 */
   delayMs?: number;
   /** Screen reader only — no visible text. */
   accessibilityLabel?: string;
@@ -17,7 +17,7 @@ export type DeferredFullscreenLoaderProps = {
 
 /**
  * Standard full-screen loading: dimmed window + Lottie only (no on-screen copy), after
- * `delayMs` (default 500ms) so quick work never flashes the overlay.
+ * `delayMs` (default 1500ms) so quick work never flashes the overlay.
  */
 export function DeferredFullscreenLoader({
   active,
