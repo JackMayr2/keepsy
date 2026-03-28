@@ -1,6 +1,7 @@
 import React from 'react';
 import { Input as TamaguiInput, InputProps, YStack } from 'tamagui';
 import { DSText } from './DSText';
+import { useTheme } from '@/src/contexts/ThemeContext';
 
 export interface DSInputProps extends InputProps {
   label?: string;
@@ -8,6 +9,8 @@ export interface DSInputProps extends InputProps {
 }
 
 export function DSInput({ label, error, ...rest }: DSInputProps) {
+  const { theme } = useTheme();
+
   return (
     <YStack width="100%" gap="$2">
       {label ? (
@@ -20,17 +23,23 @@ export function DSInput({ label, error, ...rest }: DSInputProps) {
         minHeight={56}
         paddingHorizontal="$4"
         paddingVertical="$3"
-        borderRadius={18}
+        borderRadius={theme.radii.lg}
         borderWidth={1.5}
-        backgroundColor="rgba(255,255,255,0.68)"
-        borderColor={error ? '$red10' : 'rgba(102, 92, 165, 0.22)'}
-        placeholderTextColor="$placeholderColor"
+        backgroundColor={theme.colors.surfaceGlass}
+        borderColor={error ? theme.colors.error : theme.colors.border}
+        color={theme.colors.text as any}
+        placeholderTextColor={theme.colors.textMuted as any}
+        selectionColor={theme.colors.primary as any}
         fontSize={16}
         textAlignVertical="center"
+        focusStyle={{
+          borderColor: theme.colors.primary,
+          backgroundColor: theme.colors.surface,
+        }}
         {...rest}
       />
       {error ? (
-        <DSText variant="caption" style={{ color: 'var(--red10)' }}>
+        <DSText variant="caption" style={{ color: theme.colors.error }}>
           {error}
         </DSText>
       ) : null}

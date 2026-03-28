@@ -15,7 +15,7 @@ export function setConfirmationResult(result: ConfirmationResult | null) {
 
 export async function sendPhoneCode(
   phoneNumber: string,
-  appVerifier: ApplicationVerifier
+  appVerifier?: ApplicationVerifier
 ): Promise<string> {
   try {
     const auth = getFirebaseAuth();

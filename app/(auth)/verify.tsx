@@ -1,25 +1,51 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Alert, Pressable } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { YStack } from 'tamagui';
 import { verifyCode } from '@/src/services/auth';
 import { logger } from '@/src/utils/logger';
 import { useTheme } from '@/src/contexts/ThemeContext';
-import { AnimatedBlobBackground } from '@/src/components/AnimatedBlobBackground';
-import { BrandLogo, DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
-import { Container, Button, Text } from '@/src/components/ui';
+import { BrandLogo, DSButton, DSIcon, DSText, DeferredFullscreenLoader, Page } from '@/src/design-system';
 
 const CODE_LENGTH = 6;
 
+function formatPhoneForDisplay(value: string | string[] | undefined): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return 'your number';
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length >= 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+  }
+  return raw;
+}
+
+function getVerifyErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return 'That code did not work. Please try again.';
+
+  const code = 'code' in error ? String((error as { code?: unknown }).code) : '';
+  switch (code) {
+    case 'auth/invalid-verification-code':
+      return 'That code does not match. Check the latest text and try again.';
+    case 'auth/code-expired':
+      return 'That code expired. Go back and request a fresh one.';
+    default:
+      return error.message || 'That code did not work. Please try again.';
+  }
+}
+
 export default function VerifyScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
+  const router = useRouter();
   const { theme } = useTheme();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const phoneLabel = formatPhoneForDisplay(phone);
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [phone]);
 
   const hasVerified = useRef(false);
   useEffect(() => {
@@ -38,9 +64,11 @@ export default function VerifyScreen() {
       setLoading(false);
     } catch (e) {
       setLoading(false);
-      const message = e instanceof Error ? e.message : 'Invalid code';
       logger.error('VerifyScreen', 'verifyCode failed', e);
-      Alert.alert('Error', message);
+      hasVerified.current = false;
+      setCode('');
+      inputRef.current?.focus();
+      Alert.alert('Could not verify code', getVerifyErrorMessage(e));
     }
   };
 
@@ -50,71 +78,106 @@ export default function VerifyScreen() {
   };
 
   return (
-    <View style={styles.wrapper}>
-      <AnimatedBlobBackground />
+    <Page flex={1} paddingTop={52} paddingHorizontal={28}>
+      <DeferredFullscreenLoader active={loading} />
+      <YStack gap="$2">
+        <BrandLogo size="sm" tagline="step into the circle" />
+        <DSText variant="titleLarge" marginTop="$2" marginBottom="$1">
+          Enter verification code
+        </DSText>
+        <DSText variant="body" color="secondary" lineHeight={22}>
+          Sent to {phoneLabel}
+        </DSText>
+      </YStack>
+
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'position' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        style={styles.bottomAvoider}
       >
-        <Container style={styles.content}>
-          <DeferredFullscreenLoader active={loading} />
-          <BrandLogo size="sm" tagline="verify your invite" />
-          <Text variant="titleLarge" style={styles.title}>
-            Enter the code
-          </Text>
-          <Text variant="body" color="secondary" style={styles.subtitle}>
-            Sent to {phone ?? 'your number'}
-          </Text>
-          <Pressable style={styles.codeRow} onPress={() => inputRef.current?.focus()}>
-            {Array.from({ length: CODE_LENGTH }).map((_, i) => (
-              <View key={i} style={[styles.digitBox, { borderColor: theme.colors.border }]}>
-                <Text variant="title">{code[i] ?? ''}</Text>
-              </View>
-            ))}
-          </Pressable>
-          <TextInput
-            ref={inputRef}
-            value={code}
-            onChangeText={handleChangeText}
-            keyboardType="number-pad"
-            maxLength={CODE_LENGTH}
-            style={styles.hiddenInput}
-          />
-          <Button
+        <Pressable
+          onPress={() => inputRef.current?.focus()}
+          style={styles.codeTapArea}
+        >
+          <View style={styles.codeRow}>
+            {Array.from({ length: CODE_LENGTH }).map((_, i) => {
+              const filled = Boolean(code[i]);
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.digitBox,
+                    {
+                      borderColor: filled ? theme.colors.primary : theme.colors.border,
+                      backgroundColor: filled
+                        ? theme.colors.surfaceSecondary
+                        : theme.colors.surface,
+                    },
+                  ]}
+                >
+                  <DSText variant="title" lineHeight={24}>
+                    {code[i] ?? ''}
+                  </DSText>
+                </View>
+              );
+            })}
+          </View>
+        </Pressable>
+
+        <DSText variant="caption" color="muted" textAlign="center" lineHeight={18} marginTop="$3">
+          Type the 6-digit code from your text message.
+        </DSText>
+
+        <TextInput
+          ref={inputRef}
+          value={code}
+          onChangeText={handleChangeText}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="sms-otp"
+          maxLength={CODE_LENGTH}
+          style={styles.hiddenInput}
+        />
+
+        <YStack gap="$3" marginTop="$6">
+          <DSButton
             title="Verify"
             onPress={handleVerify}
             loading={loading}
             disabled={code.length !== CODE_LENGTH}
             icon={<DSIcon name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'check_circle' }} size={16} color="#FFFFFF" />}
-            style={styles.button}
           />
-        </Container>
+          <DSButton
+            title="Use a different number"
+            variant="ghost"
+            onPress={() =>
+              router.replace({
+                pathname: '/(auth)/phone',
+                params: phone ? { phone } : {},
+              })
+            }
+            icon={<DSIcon name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={16} color={theme.colors.text} />}
+          />
+        </YStack>
       </KeyboardAvoidingView>
-    </View>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1 },
-  flex: { flex: 1 },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
+  codeTapArea: {
+    paddingVertical: 2,
   },
-  title: { marginBottom: 10 },
-  subtitle: { marginBottom: 28 },
   codeRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 28,
+    gap: 8,
   },
   digitBox: {
     width: 46,
-    height: 56,
+    height: 58,
     borderRadius: 14,
-    borderWidth: 2,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -124,5 +187,7 @@ const styles = StyleSheet.create({
     height: 1,
     opacity: 0,
   },
-  button: { marginTop: 8 },
+  bottomAvoider: {
+    marginTop: 'auto',
+  },
 });

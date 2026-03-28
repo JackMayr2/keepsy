@@ -9,7 +9,8 @@ const AnimatedButton = Animated.createAnimatedComponent(TamaguiButton);
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 
-export interface DSButtonProps extends Omit<GetProps<typeof TamaguiButton>, 'theme' | 'variant'> {
+export interface DSButtonProps
+  extends Omit<GetProps<typeof TamaguiButton>, 'theme' | 'variant' | 'icon' | 'iconAfter'> {
   title: string;
   variant?: ButtonVariant;
   loading?: boolean;
@@ -51,17 +52,20 @@ export function DSButton({
     onPress?.(e);
   };
 
-  const surfaceBackground = colorScheme === 'dark' ? 'rgba(255,255,255,0.12)' : theme.colors.surfaceGlass;
-  const outlineBackground = colorScheme === 'dark' ? 'rgba(16, 22, 58, 0.92)' : theme.colors.surfaceSecondary;
+  const secondaryBackground =
+    colorScheme === 'dark' ? 'rgba(255,255,255,0.12)' : theme.colors.surfaceGlass;
+  const outlineBackground =
+    colorScheme === 'dark' ? 'rgba(16, 22, 58, 0.92)' : theme.colors.surfaceSecondary;
+
   const chrome = {
     primary: {
       backgroundColor: theme.colors.primary,
-      borderColor: 'transparent',
+      borderColor: 'rgba(255,255,255,0.16)',
       textColor: '#FFFFFF',
       shadowColor: theme.colors.primary,
     },
     secondary: {
-      backgroundColor: surfaceBackground,
+      backgroundColor: secondaryBackground,
       borderColor: theme.colors.glassBorder,
       textColor: theme.colors.text,
       shadowColor: 'transparent',
@@ -86,15 +90,15 @@ export function DSButton({
       height={compact ? 46 : 54}
       width={iconOnly ? (compact ? 46 : 54) : undefined}
       paddingHorizontal={iconOnly ? 0 : compact ? '$4' : '$5'}
-      borderRadius={iconOnly ? 18 : 20}
+      borderRadius={iconOnly ? 18 : theme.radii.pill}
       backgroundColor={chrome.backgroundColor}
       borderColor={chrome.borderColor}
-      borderWidth={variant === 'ghost' || variant === 'primary' ? 0 : 1}
+      borderWidth={variant === 'ghost' ? 0 : 1}
       shadowColor={chrome.shadowColor}
       shadowOffset={{ width: 0, height: 10 }}
-      shadowOpacity={variant === 'primary' ? 1 : 0}
-      shadowRadius={variant === 'primary' ? 16 : 0}
-      elevation={variant === 'primary' ? 6 : 0}
+      shadowOpacity={variant === 'primary' ? 0.24 : 0}
+      shadowRadius={variant === 'primary' ? 18 : 0}
+      elevation={variant === 'primary' ? 8 : 0}
       pressStyle={{ opacity: 0.95 }}
       opacity={disabled || loading ? 0.6 : 1}
       onPress={handlePress}
