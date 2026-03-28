@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  ActivityIndicator,
   View,
   StyleSheet,
   FlatList,
@@ -28,7 +29,7 @@ import {
 import { getDemoUser } from '@/src/tutorial/personas';
 import { uploadPromptImage } from '@/src/services/storage';
 import { logger } from '@/src/utils/logger';
-import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Text, Button, Input } from '@/src/components/ui';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
 import type { Prompt, Draft } from '@/src/types/prompt.types';
@@ -219,7 +220,7 @@ export default function PromptsTab() {
       )}
       {loadingSubmissions && (
         <View style={styles.submissionsLoader}>
-          <KeepsyBookLoader size={24} />
+          <ActivityIndicator size="small" color={theme.colors.primary} />
         </View>
       )}
       <Text variant="label" color="secondary" style={styles.yourAnswerLabel}>

@@ -14,7 +14,7 @@ import { uploadProfileImage } from '@/src/services/storage';
 import { generateProfileAvatarOptions } from '@/src/services/openai';
 import { isOpenAIConfigured } from '@/src/config/openai';
 import { logger } from '@/src/utils/logger';
-import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import {
   Container,
   Button,
@@ -210,11 +210,6 @@ export default function EditProfileScreen() {
               </Text>
             </View>
           )}
-          {uploadingPhoto && (
-            <View style={styles.avatarOverlay}>
-              <KeepsyBookLoader size={32} />
-            </View>
-          )}
         </Pressable>
         <Text variant="caption" color="secondary" style={styles.avatarHint}>
           Tap to change profile picture
@@ -364,15 +359,6 @@ const styles = StyleSheet.create({
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },

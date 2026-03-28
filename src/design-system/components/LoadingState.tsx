@@ -60,7 +60,7 @@ export function LoadingState({
   visibleSubtitle,
   style,
 }: LoadingStateProps) {
-  const { colorScheme } = useTheme();
+  const { colorScheme, theme } = useTheme();
 
   const size = sizeProp ?? (fill ? DEFAULT_SIZE_FILL : DEFAULT_SIZE_INLINE);
 
@@ -96,7 +96,13 @@ export function LoadingState({
           <View style={styles.modalCenter} pointerEvents="box-none">
             {inner}
             {visibleSubtitle ? (
-              <Text style={styles.visibleSubtitle} numberOfLines={2}>
+              <Text
+                style={[
+                  styles.visibleSubtitle,
+                  { color: colorScheme === 'dark' ? 'rgba(255,255,255,0.92)' : theme.colors.text },
+                ]}
+                numberOfLines={2}
+              >
                 {visibleSubtitle}
               </Text>
             ) : null}
@@ -140,7 +146,6 @@ const styles = StyleSheet.create({
   },
   visibleSubtitle: {
     marginTop: 4,
-    color: 'rgba(255,255,255,0.92)',
     fontSize: 15,
     fontWeight: '500',
     textAlign: 'center',

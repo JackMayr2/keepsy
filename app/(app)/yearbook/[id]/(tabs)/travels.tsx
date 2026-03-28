@@ -45,7 +45,7 @@ import { saveImageToLibraryFromUri } from '@/src/utils/saveImageToLibrary';
 import { logger } from '@/src/utils/logger';
 import { FullscreenZoomablePhoto } from '@/src/components/media/FullscreenZoomablePhoto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { DSIcon, DeferredFullscreenLoader, KeepsyBookLoader } from '@/src/design-system';
+import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Text, Button, Input, PlaceAutocomplete, type ResolvedPlace } from '@/src/components/ui';
 import { MapProfileMarker, initialsFromName } from '@/src/components/maps/MapProfileMarker';
 import { standardFlatListScrollProps, TAB_BAR_CONTENT_HEIGHT } from '@/src/design-system';
