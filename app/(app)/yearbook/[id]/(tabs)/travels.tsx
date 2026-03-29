@@ -12,18 +12,17 @@ import {
   ScrollView,
   Dimensions,
   useWindowDimensions,
-  type NativeSyntheticEvent,
-  type NativeScrollEvent,
 } from 'react-native';
-import PagerView from 'react-native-pager-view';
+import PagerView from '@/src/components/paging/NativePagerView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import MapView from 'react-native-maps';
+import MapView from '@/src/components/maps/NativeMapView';
 import { useNavigation } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
+import { useYearbookPermissions } from '@/src/hooks/useYearbookPermissions';
 import {
   getTravels,
   createTravel,
@@ -75,6 +74,7 @@ export default function TravelsTab() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { navVisible, setNavVisible } = useYearbookNav();
+  const { canContribute, phase } = useYearbookPermissions(id);
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
 
@@ -91,7 +91,7 @@ export default function TravelsTab() {
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [fabOpen, setFabOpen] = useState(false);
   const fabExpand = useRef(new Animated.Value(0)).current;
-  const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
+  const mapRef = useRef<any>(null);
   const [memberHomes, setMemberHomes] = useState<
     {
       userId: string;
@@ -133,20 +133,12 @@ export default function TravelsTab() {
   const [fullscreenImageZoomed, setFullscreenImageZoomed] = useState(false);
   const [savingFullscreenPhoto, setSavingFullscreenPhoto] = useState(false);
 
-  const fullscreenScrollRef = useRef<ScrollView>(null);
-
   useEffect(() => {
     if (fullscreenGallery) {
       setFullscreenPhotoIndex(fullscreenGallery.initialIndex);
       setFullscreenImageZoomed(false);
-      if (Platform.OS === 'web') {
-        const idx = fullscreenGallery.initialIndex;
-        requestAnimationFrame(() => {
-          fullscreenScrollRef.current?.scrollTo({ x: idx * windowWidth, animated: false });
-        });
-      }
     }
-  }, [fullscreenGallery, windowWidth]);
+  }, [fullscreenGallery]);
 
   /** Warm cache for prev/current/next so paging in fullscreen feels instant (native). */
   useEffect(() => {
@@ -371,6 +363,10 @@ export default function TravelsTab() {
 
   const handleAdd = async () => {
     if (!id || !userId) return;
+    if (!canContribute) {
+      Alert.alert('Locked', 'This yearbook is locked. Only creators/admins can edit now.');
+      return;
+    }
     if (photoUris.length === 0) {
       Alert.alert('Photos required', 'Please add at least one photo for your trip.');
       return;
@@ -529,52 +525,23 @@ export default function TravelsTab() {
       </Text>
       {photoUris.length > 1 ? (
         <View style={styles.addTripPreviewSection}>
-          {Platform.OS === 'web' ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              style={[styles.addTripPreviewPager, { width: addTripPagerWidth }]}
-              onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                const x = e.nativeEvent.contentOffset.x;
-                const page = Math.round(x / addTripPagerWidth);
-                setAddTripPreviewIndex(Math.max(0, Math.min(photoUris.length - 1, page)));
-              }}
-            >
-              {photoUris.map((uri, i) => (
-                <Pressable
-                  key={`preview-${uri}-${i}`}
-                  onPress={() => openFullscreen(photoUris, i)}
-                  style={{ width: addTripPagerWidth }}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={[styles.addTripPreviewImage, { width: addTripPagerWidth }]}
-                    resizeMode="cover"
-                  />
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : (
-            <PagerView
-              key={photoUris.join('|').slice(0, 120)}
-              style={[styles.addTripPreviewPager, { width: addTripPagerWidth }]}
-              initialPage={Math.min(addTripPreviewIndex, photoUris.length - 1)}
-              onPageSelected={(e) => setAddTripPreviewIndex(e.nativeEvent.position)}
-            >
-              {photoUris.map((uri, i) => (
-                <Pressable
-                  key={`pv-${uri}-${i}`}
-                  style={styles.pagerPageFill}
-                  onPress={() => openFullscreen(photoUris, i)}
-                >
-                  <Image source={{ uri }} style={styles.addTripPreviewImageFill} resizeMode="cover" />
-                </Pressable>
-              ))}
-            </PagerView>
-          )}
+          <PagerView
+            key={photoUris.join('|').slice(0, 120)}
+            style={[styles.addTripPreviewPager, { width: addTripPagerWidth }]}
+            initialPage={Math.min(addTripPreviewIndex, photoUris.length - 1)}
+            onPageSelected={(e: { nativeEvent: { position: number } }) =>
+              setAddTripPreviewIndex(e.nativeEvent.position)}
+          >
+            {photoUris.map((uri, i) => (
+              <Pressable
+                key={`pv-${uri}-${i}`}
+                style={styles.pagerPageFill}
+                onPress={() => openFullscreen(photoUris, i)}
+              >
+                <Image source={{ uri }} style={styles.addTripPreviewImageFill} resizeMode="cover" />
+              </Pressable>
+            ))}
+          </PagerView>
           <View style={styles.photoPagerMeta}>
             <Text variant="caption" color="secondary">
               Swipe between photos · tap for full screen · {addTripPreviewIndex + 1} / {photoUris.length}
@@ -694,7 +661,7 @@ export default function TravelsTab() {
             title="Save trip"
             onPress={handleAdd}
             loading={saving}
-            disabled={photoUris.length === 0}
+            disabled={!canContribute || photoUris.length === 0}
             style={styles.modalActionBtn}
             icon={<DSIcon name={{ ios: 'bookmark.fill', android: 'bookmark', web: 'bookmark' }} size={16} color="#FFFFFF" />}
           />
@@ -706,6 +673,13 @@ export default function TravelsTab() {
   return (
     <View style={styles.screen}>
       <DeferredFullscreenLoader active={saving} visibleSubtitle={saveProgressSubtitle} />
+      {!canContribute ? (
+        <View style={[styles.phaseBanner, { top: insets.top + 10 }]}>
+          <Text variant="caption" color="secondary">
+            Yearbook {phase}: members are read-only.
+          </Text>
+        </View>
+      ) : null}
       {/* Full-screen map when in map view (native only) */}
       {activeTab === 'map' && Platform.OS !== 'web' && (
         <View style={StyleSheet.absoluteFill}>
@@ -802,46 +776,20 @@ export default function TravelsTab() {
               {/* Thumbnail + expand sit OUTSIDE the row Pressable so expand isn’t swallowed by the parent (RN hit testing). */}
               {rowPhotos.length > 1 ? (
                 <View style={styles.rowThumbHost}>
-                  {Platform.OS === 'web' ? (
-                    <ScrollView
-                      horizontal
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      nestedScrollEnabled
-                      keyboardShouldPersistTaps="handled"
-                      style={styles.rowCarouselScroll}
-                      contentContainerStyle={styles.rowCarouselContent}
-                      onMomentumScrollEnd={(ev: NativeSyntheticEvent<NativeScrollEvent>) => {
-                        const x = ev.nativeEvent.contentOffset.x;
-                        const page = Math.round(x / ROW_THUMB_SIZE);
-                        rowPhotoIndexRef.current[item.id] = Math.max(
-                          0,
-                          Math.min(rowPhotos.length - 1, page)
-                        );
-                      }}
-                    >
-                      {rowPhotos.map((uri, i) => (
-                        <View key={`${item.id}-p-${i}`} style={styles.rowCarouselPage}>
-                          <Image source={{ uri }} style={styles.rowCarouselImage} />
-                        </View>
-                      ))}
-                    </ScrollView>
-                  ) : (
-                    <PagerView
-                      key={`row-${item.id}-${rowPhotos.join('|').slice(0, 80)}`}
-                      style={styles.rowCarouselScroll}
-                      initialPage={0}
-                      onPageSelected={(ev) => {
-                        rowPhotoIndexRef.current[item.id] = ev.nativeEvent.position;
-                      }}
-                    >
-                      {rowPhotos.map((uri, i) => (
-                        <View key={`${item.id}-pv-${i}`} style={styles.rowCarouselPage}>
-                          <Image source={{ uri }} style={styles.rowCarouselImage} />
-                        </View>
-                      ))}
-                    </PagerView>
-                  )}
+                  <PagerView
+                    key={`row-${item.id}-${rowPhotos.join('|').slice(0, 80)}`}
+                    style={styles.rowCarouselScroll}
+                    initialPage={0}
+                    onPageSelected={(ev: { nativeEvent: { position: number } }) => {
+                      rowPhotoIndexRef.current[item.id] = ev.nativeEvent.position;
+                    }}
+                  >
+                    {rowPhotos.map((uri, i) => (
+                      <View key={`${item.id}-pv-${i}`} style={styles.rowCarouselPage}>
+                        <Image source={{ uri }} style={styles.rowCarouselImage} />
+                      </View>
+                    ))}
+                  </PagerView>
                   <View style={[styles.rowPhotoCountBadge, { backgroundColor: theme.colors.primary }]}>
                     <Text variant="caption" style={styles.rowPhotoCountText}>
                       {rowPhotos.length}
@@ -932,9 +880,11 @@ export default function TravelsTab() {
           <Pressable
             style={[styles.fabMenuItem, { backgroundColor: theme.colors.surface }]}
             onPress={() => {
+              if (!canContribute) return;
               setModalVisible(true);
               setFabOpen(false);
             }}
+            disabled={!canContribute}
           >
             <DSIcon name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={22} color={theme.colors.primary} />
             <Text variant="body" style={[styles.fabMenuLabel, { color: theme.colors.text }]}>
@@ -1032,49 +982,19 @@ export default function TravelsTab() {
                   return (
                     <View style={[styles.detailPhotoSection, { width: tripDetailPagerWidth }]}>
                       <View style={styles.detailPhotoPagerWrap}>
-                        {Platform.OS === 'web' ? (
-                          <ScrollView
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            style={[styles.detailPhotoPager, { width: tripDetailPagerWidth, height: 240 }]}
-                            onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                              const x = e.nativeEvent.contentOffset.x;
-                              const page = Math.round(x / tripDetailPagerWidth);
-                              setTravelDetailPhotoIndex(
-                                Math.max(0, Math.min(detailUrls.length - 1, page))
-                              );
-                            }}
-                          >
-                            {detailUrls.map((uri, i) => (
-                              <Pressable
-                                key={`${uri}-${i}`}
-                                onPress={() => openFullscreen(detailUrls, i)}
-                                style={{ width: tripDetailPagerWidth }}
-                              >
-                                <Image
-                                  source={{ uri }}
-                                  style={[styles.detailImage, { width: tripDetailPagerWidth }]}
-                                  resizeMode="cover"
-                                />
-                              </Pressable>
-                            ))}
-                          </ScrollView>
-                        ) : (
-                          <PagerView
-                            key={detailUrls.join('|').slice(0, 120)}
-                            style={[styles.detailPhotoPager, { width: tripDetailPagerWidth, height: 240 }]}
-                            initialPage={Math.min(travelDetailPhotoIndex, detailUrls.length - 1)}
-                            onPageSelected={(e) => setTravelDetailPhotoIndex(e.nativeEvent.position)}
-                          >
-                            {detailUrls.map((uri, i) => (
-                              <View key={`dpv-${uri}-${i}`} style={styles.detailPagerPage}>
-                                <Image source={{ uri }} style={styles.detailImageFill} resizeMode="cover" />
-                              </View>
-                            ))}
-                          </PagerView>
-                        )}
+                        <PagerView
+                          key={detailUrls.join('|').slice(0, 120)}
+                          style={[styles.detailPhotoPager, { width: tripDetailPagerWidth, height: 240 }]}
+                          initialPage={Math.min(travelDetailPhotoIndex, detailUrls.length - 1)}
+                          onPageSelected={(e: { nativeEvent: { position: number } }) =>
+                            setTravelDetailPhotoIndex(e.nativeEvent.position)}
+                        >
+                          {detailUrls.map((uri, i) => (
+                            <View key={`dpv-${uri}-${i}`} style={styles.detailPagerPage}>
+                              <Image source={{ uri }} style={styles.detailImageFill} resizeMode="cover" />
+                            </View>
+                          ))}
+                        </PagerView>
                         <Pressable
                           style={styles.detailExpandFab}
                           onPress={() => openFullscreen(detailUrls, travelDetailPhotoIndex)}
@@ -1240,43 +1160,13 @@ export default function TravelsTab() {
             {fullscreenGallery ? (
               (() => {
                 const fsH = Math.max(280, windowHeight - insets.top - insets.bottom - 56);
-                return Platform.OS === 'web' ? (
-                  <ScrollView
-                    ref={fullscreenScrollRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    style={[styles.fullscreenPager, { width: windowWidth, height: fsH }]}
-                    onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                      const x = e.nativeEvent.contentOffset.x;
-                      const page = Math.round(x / windowWidth);
-                      setFullscreenPhotoIndex(
-                        Math.max(0, Math.min(fullscreenGallery.urls.length - 1, page))
-                      );
-                      setFullscreenImageZoomed(false);
-                    }}
-                  >
-                    {fullscreenGallery.urls.map((uri, i) => (
-                      <View key={`fs-web-${i}-${uri}`} style={[styles.fullscreenPage, { width: windowWidth, height: fsH }]}>
-                        <FullscreenZoomablePhoto
-                          uri={uri}
-                          width={windowWidth}
-                          height={fsH}
-                          isActive={fullscreenPhotoIndex === i}
-                          allowPan={fullscreenImageZoomed}
-                          onZoomChange={setFullscreenImageZoomed}
-                        />
-                      </View>
-                    ))}
-                  </ScrollView>
-                ) : (
+                return (
                   <PagerView
                     key={`fs-${fullscreenGallery.initialIndex}-${fullscreenGallery.urls.length}`}
                     style={[styles.fullscreenPager, { width: windowWidth, height: fsH }]}
                     initialPage={fullscreenGallery.initialIndex}
                     scrollEnabled={!fullscreenImageZoomed}
-                    onPageSelected={(e) => {
+                    onPageSelected={(e: { nativeEvent: { position: number } }) => {
                       setFullscreenPhotoIndex(e.nativeEvent.position);
                       setFullscreenImageZoomed(false);
                     }}
@@ -1308,6 +1198,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     position: 'relative',
+  },
+  phaseBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 20,
   },
   webMapOverlay: {
     justifyContent: 'center',

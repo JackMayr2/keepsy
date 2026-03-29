@@ -21,6 +21,10 @@ import {
   removeYearbookMemberByCreator,
   updateYearbook,
   updateYearbookMemberRoleByCreator,
+  setYearbookPhaseByCreator,
+  markYearbookReviewDoneByCreator,
+  getLatestCompilationForYearbook,
+  finalizeCompilationAndExport,
 } from '@/src/services/firestore';
 import { isTutorialYearbook } from '@/src/tutorial/constants';
 import type { YearbookMember, YearbookMemberRole } from '@/src/types/yearbook.types';
@@ -33,6 +37,7 @@ import { logger } from '@/src/utils/logger';
 import { DSIcon, DeferredFullscreenLoader } from '@/src/design-system';
 import { Container, Text, Button, Input, DatePickerField } from '@/src/components/ui';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { canFinalizeYearbook, effectiveYearbookPhase, isYearbookLockedPhase } from '@/src/utils/yearbookLifecycle';
 
 export default function YearbookSettingsScreen() {
   const id = useYearbookId();
@@ -64,9 +69,15 @@ export default function YearbookSettingsScreen() {
   const [newPollOptions, setNewPollOptions] = useState('');
   const [newSuperlative, setNewSuperlative] = useState('');
   const [memberBusyId, setMemberBusyId] = useState<string | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [selectedThemeId, setSelectedThemeId] = useState('classic');
+  const [latestCompilationId, setLatestCompilationId] = useState<string | null>(null);
 
   const isCreator = yearbook != null && userId != null && yearbook.createdBy === userId;
   const canEditContent = myRole === 'creator' || myRole === 'admin';
+  const phase = effectiveYearbookPhase(yearbook);
+  const yearbookLocked = isYearbookLockedPhase(phase);
+  const canFinalize = canFinalizeYearbook(myRole);
 
   const minimumDueDate = useMemo(() => {
     const d = new Date();
@@ -80,6 +91,9 @@ export default function YearbookSettingsScreen() {
       setDueDate(yearbook.dueDate ?? '');
       setSelectedAiUrl(yearbook.aiVisualUrl ?? null);
       setGeneratedUrls([]);
+      if (yearbook.selectedThemeId?.trim()) {
+        setSelectedThemeId(yearbook.selectedThemeId);
+      }
     }
   }, [yearbook]);
 
@@ -141,6 +155,13 @@ export default function YearbookSettingsScreen() {
     loadStarterContent();
   }, [loadStarterContent]);
 
+  useEffect(() => {
+    if (!id) return;
+    getLatestCompilationForYearbook(id)
+      .then((comp) => setLatestCompilationId(comp?.id ?? null))
+      .catch((e) => logger.warn('YearbookSettings', 'getLatestCompilationForYearbook failed', e));
+  }, [id, refresh]);
+
   const handleGenerateCover = async () => {
     if (!aiPrompt.trim()) {
       Alert.alert('Describe the image', 'Enter a short description for the yearbook cover.');
@@ -185,6 +206,59 @@ export default function YearbookSettingsScreen() {
       refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLockYearbook = async () => {
+    if (!id || !userId || !isCreator) return;
+    setLifecycleBusy(true);
+    try {
+      await setYearbookPhaseByCreator(id, userId, 'locked');
+      await refresh();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not lock yearbook');
+    } finally {
+      setLifecycleBusy(false);
+    }
+  };
+
+  const handleReopenYearbook = async () => {
+    if (!id || !userId || !isCreator) return;
+    setLifecycleBusy(true);
+    try {
+      await setYearbookPhaseByCreator(id, userId, 'active');
+      await refresh();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not reopen yearbook');
+    } finally {
+      setLifecycleBusy(false);
+    }
+  };
+
+  const handleMarkReviewDone = async () => {
+    if (!id || !userId || !isCreator) return;
+    setLifecycleBusy(true);
+    try {
+      const { compilationId } = await markYearbookReviewDoneByCreator(id, userId, selectedThemeId);
+      setLatestCompilationId(compilationId);
+      await refresh();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not complete review');
+    } finally {
+      setLifecycleBusy(false);
+    }
+  };
+
+  const handleFinalizeExport = async () => {
+    if (!latestCompilationId || !userId) return;
+    setLifecycleBusy(true);
+    try {
+      await finalizeCompilationAndExport(latestCompilationId, userId);
+      await refresh();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not finalize export');
+    } finally {
+      setLifecycleBusy(false);
     }
   };
 
@@ -244,11 +318,11 @@ export default function YearbookSettingsScreen() {
   };
 
   const handleAddPrompt = async () => {
-    if (!id) return;
+    if (!id || !userId) return;
     const text = newPromptText.trim();
     if (!text) return;
     try {
-      await createPromptForYearbook(id, text, newPromptType);
+      await createPromptForYearbook(id, userId, text, newPromptType);
       setNewPromptText('');
       await loadStarterContent();
       refresh();
@@ -268,7 +342,8 @@ export default function YearbookSettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deletePromptAndDrafts(promptId);
+              if (!userId) return;
+              await deletePromptAndDrafts(promptId, userId);
               await loadStarterContent();
               refresh();
             } catch (e) {
@@ -281,7 +356,7 @@ export default function YearbookSettingsScreen() {
   };
 
   const handleAddPoll = async () => {
-    if (!id) return;
+    if (!id || !userId) return;
     const question = newPollQuestion.trim();
     const options = newPollOptions
       .split(',')
@@ -292,7 +367,7 @@ export default function YearbookSettingsScreen() {
       return;
     }
     try {
-      await createPollForYearbook(id, question, options);
+      await createPollForYearbook(id, userId, question, options);
       setNewPollQuestion('');
       setNewPollOptions('');
       await loadStarterContent();
@@ -313,7 +388,8 @@ export default function YearbookSettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deletePollAndVotes(pollId);
+              if (!userId) return;
+              await deletePollAndVotes(pollId, userId);
               await loadStarterContent();
               refresh();
             } catch (e) {
@@ -326,11 +402,11 @@ export default function YearbookSettingsScreen() {
   };
 
   const handleAddSuperlative = async () => {
-    if (!id) return;
+    if (!id || !userId) return;
     const text = newSuperlative.trim();
     if (!text) return;
     try {
-      await createSuperlativeForYearbook(id, text);
+      await createSuperlativeForYearbook(id, userId, text);
       setNewSuperlative('');
       await loadStarterContent();
       refresh();
@@ -350,7 +426,8 @@ export default function YearbookSettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteSuperlativeById(superlativeId);
+              if (!userId) return;
+              await deleteSuperlativeById(superlativeId, userId);
               await loadStarterContent();
               refresh();
             } catch (e) {
@@ -391,11 +468,112 @@ export default function YearbookSettingsScreen() {
     );
   }
 
-  const settingsBusy = generating || saving;
+  const settingsBusy = generating || saving || lifecycleBusy;
 
   return (
     <Container scroll>
       <DeferredFullscreenLoader active={settingsBusy} />
+      <View style={[styles.manageSection, { borderTopColor: theme.colors.borderMuted, marginTop: 4, paddingTop: 16 }]}>
+        <Text variant="title" style={styles.manageTitle}>
+          Lifecycle
+        </Text>
+        <Text variant="caption" color="secondary" style={styles.manageHint}>
+          Current phase: {phase}
+        </Text>
+        {canFinalize ? (
+          <View style={styles.inlineRow}>
+            {!yearbookLocked ? (
+              <Button
+                compact
+                title="Lock yearbook"
+                variant="outline"
+                onPress={handleLockYearbook}
+                disabled={lifecycleBusy}
+              />
+            ) : (
+              <Button
+                compact
+                title="Reopen edits"
+                variant="outline"
+                onPress={handleReopenYearbook}
+                disabled={lifecycleBusy}
+              />
+            )}
+            {(phase === 'locked' || phase === 'review') ? (
+              <Button
+                compact
+                title="Mark review done"
+                variant="outline"
+                onPress={handleMarkReviewDone}
+                disabled={lifecycleBusy}
+              />
+            ) : null}
+            {phase === 'editableDraft' && latestCompilationId ? (
+              <Button
+                compact
+                title="Finalize export"
+                variant="outline"
+                onPress={handleFinalizeExport}
+                disabled={lifecycleBusy}
+              />
+            ) : null}
+            {(phase === 'editableDraft' || phase === 'approved') ? (
+              <Button
+                compact
+                title="Open editor"
+                variant="outline"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(app)/yearbook/[id]/editor',
+                    params: { id: id ?? '' },
+                  })
+                }
+                disabled={lifecycleBusy}
+              />
+            ) : null}
+            {(phase === 'archived' || yearbook?.archiveUrl) ? (
+              <Button
+                compact
+                title="Open archive"
+                variant="outline"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(app)/yearbook/[id]/archive',
+                    params: { id: id ?? '' },
+                  })
+                }
+                disabled={lifecycleBusy}
+              />
+            ) : null}
+          </View>
+        ) : (
+          <Text variant="caption" color="secondary">
+            Only the yearbook creator can change lifecycle phases.
+          </Text>
+        )}
+        <Text variant="caption" color="secondary" style={styles.manageHint}>
+          Theme for print pipeline
+        </Text>
+        <View style={styles.inlineRow}>
+          {['classic', 'modern', 'minimal'].map((themeId) => (
+            <Pressable
+              key={themeId}
+              onPress={() => setSelectedThemeId(themeId)}
+              style={[
+                styles.smallChip,
+                { borderColor: selectedThemeId === themeId ? theme.colors.primary : theme.colors.borderMuted },
+              ]}
+            >
+              <Text
+                variant="caption"
+                style={{ color: selectedThemeId === themeId ? theme.colors.primary : theme.colors.text }}
+              >
+                {themeId}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
       <Text variant="title" style={styles.sectionTitle}>
         Details
       </Text>

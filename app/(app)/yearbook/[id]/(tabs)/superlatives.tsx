@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
+import { useYearbookPermissions } from '@/src/hooks/useYearbookPermissions';
 import {
   getSuperlatives,
   getYearbookMembers,
@@ -56,6 +57,7 @@ export default function SuperlativesTab() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { navVisible, setNavVisible } = useYearbookNav();
+  const { canContribute, phase } = useYearbookPermissions(id);
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
   const listPaddingTop =
@@ -126,6 +128,7 @@ export default function SuperlativesTab() {
 
   const handleNominate = async (superlativeId: string, nominatedUserId: string) => {
     if (!userId || nominating) return;
+    if (!canContribute) return;
     setNominating(true);
     try {
       await nominateSuperlative(superlativeId, userId, nominatedUserId);
@@ -165,6 +168,13 @@ export default function SuperlativesTab() {
 
   return (
     <Container edgeToEdge>
+      {!canContribute ? (
+        <View style={styles.phaseBanner}>
+          <Text variant="caption" color="secondary">
+            Yearbook {phase}: members are read-only.
+          </Text>
+        </View>
+      ) : null}
       {/* Do not use DeferredFullscreenLoader here: it renders a second RN Modal (Lottie) and stacks with the nomination Modal → freezes on iOS/Android. */}
       {nominating ? (
         <View style={styles.nominatingOverlay} pointerEvents="box-none">
@@ -209,6 +219,7 @@ export default function SuperlativesTab() {
                   title="Nominate"
                   variant="outline"
                   onPress={() => setSelectedSuperlative(s)}
+                  disabled={!canContribute}
                   icon={<DSIcon name={{ ios: 'star.circle', android: 'stars', web: 'stars' }} size={16} color={theme.colors.text} />}
                   style={styles.nominateBtn}
                 />
@@ -331,5 +342,9 @@ const styles = StyleSheet.create({
   },
   nominatingScrim: {
     backgroundColor: 'rgba(0,0,0,0.22)',
+  },
+  phaseBanner: {
+    paddingHorizontal: LIST_HORIZONTAL_PADDING,
+    paddingTop: 8,
   },
 });

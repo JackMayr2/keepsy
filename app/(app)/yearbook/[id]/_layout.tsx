@@ -129,6 +129,8 @@ export default function YearbookDetailLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: true }} />
         <Stack.Screen name="settings" options={{ title: 'Yearbook settings' }} />
+        <Stack.Screen name="editor" options={{ title: 'Yearbook editor' }} />
+        <Stack.Screen name="archive" options={{ title: 'Archive & export' }} />
       </Stack>
       </YearbookNavProvider>
     </YearbookIdProvider>

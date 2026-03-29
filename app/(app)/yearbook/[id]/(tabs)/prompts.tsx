@@ -20,6 +20,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
 import { usePrompts } from '@/src/hooks/usePrompts';
+import { useYearbookPermissions } from '@/src/hooks/useYearbookPermissions';
 import { saveDraft, getSubmissionsForPrompt, getDraftForPrompt } from '@/src/services/firestore';
 import { isTutorialYearbook } from '@/src/tutorial/constants';
 import {
@@ -59,6 +60,7 @@ export default function PromptsTab() {
   const { navVisible, setNavVisible } = useYearbookNav();
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const { prompts, loading, refresh, myDraftsByPromptId } = usePrompts(id, userId);
+  const { canContribute, phase } = useYearbookPermissions(id);
   const promptsSorted = useMemo(
     () => [...prompts].sort((a, b) => a.order - b.order),
     [prompts]
@@ -83,6 +85,10 @@ export default function PromptsTab() {
 
   const handleSubmit = async () => {
     if (!selected || !userId || !id) return;
+    if (!canContribute) {
+      Alert.alert('Locked', 'This yearbook is locked. Only creators/admins can edit now.');
+      return;
+    }
     if (selected.type === 'photo' && !photoUri) return;
     if (selected.type === 'text' && !answer.trim()) return;
 
@@ -180,6 +186,11 @@ export default function PromptsTab() {
       <Text variant="title" style={styles.modalTitle}>
         {selected?.text}
       </Text>
+      {!canContribute ? (
+        <Text variant="caption" color="secondary" style={styles.lockedHint}>
+          This yearbook is in {phase}. Members can review content but cannot submit changes.
+        </Text>
+      ) : null}
       {submissions.length > 0 && (
         <View style={styles.submissionsSection}>
           <Text variant="label" color="secondary" style={styles.submissionsLabel}>
@@ -271,7 +282,7 @@ export default function PromptsTab() {
           <Button
             title="Submit"
             onPress={handleSubmit}
-            disabled={(selected?.type === 'text' && !answer.trim()) || (selected?.type === 'photo' && !photoUri)}
+            disabled={!canContribute || (selected?.type === 'text' && !answer.trim()) || (selected?.type === 'photo' && !photoUri)}
             loading={saving}
             style={styles.modalActionBtn}
             icon={<DSIcon name={{ ios: 'paperplane.fill', android: 'send', web: 'send' }} size={16} color="#FFFFFF" />}
@@ -286,6 +297,13 @@ export default function PromptsTab() {
   return (
     <Container edgeToEdge>
       <DeferredFullscreenLoader active={asyncBusy} />
+      {!canContribute ? (
+        <View style={styles.phaseBanner}>
+          <Text variant="caption" color="secondary">
+            Yearbook {phase}: members are read-only.
+          </Text>
+        </View>
+      ) : null}
       <FlatList
         data={prompts}
         keyExtractor={(p) => p.id}
@@ -451,6 +469,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   modalTitle: { marginBottom: 16 },
+  lockedHint: { marginBottom: 12 },
+  phaseBanner: {
+    paddingHorizontal: LIST_HORIZONTAL_PADDING,
+    paddingTop: 8,
+  },
   photoSection: { marginVertical: 8 },
   previewImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, marginBottom: 12 },
   changePhoto: { alignSelf: 'flex-start' },

@@ -7,9 +7,12 @@
     "start:interactive": "CI=0 expo start",
     "android": "expo start --android",
     "ios": "CI=0 expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "print-studio": "npm run dev --prefix apps/yearbook-print",
+    "print-studio:build": "npm run build --prefix apps/yearbook-print"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.13.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/native": "^7.0.14",

@@ -1,34 +1,123 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write for authenticated users.
-    // Tighten these (e.g. by yearbookId or resource.data) for production.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberDoc(yearbookId) {
+      return get(/databases/$(database)/documents/yearbookMembers/$(yearbookId + '_' + request.auth.uid));
+    }
+
+    function isMember(yearbookId) {
+      return signedIn() && memberDoc(yearbookId).data.userId == request.auth.uid;
+    }
+
+    function role(yearbookId) {
+      return isMember(yearbookId) ? memberDoc(yearbookId).data.role : null;
+    }
+
+    function isCreator(yearbookId) {
+      return get(/databases/$(database)/documents/yearbooks/$(yearbookId)).data.createdBy == request.auth.uid;
+    }
+
+    function isAdminOrCreator(yearbookId) {
+      return role(yearbookId) == 'creator' || role(yearbookId) == 'admin';
+    }
+
+    function yearbookPhase(yearbookId) {
+      return get(/databases/$(database)/documents/yearbooks/$(yearbookId)).data.phase;
+    }
+
+    function canContribute(yearbookId) {
+      return yearbookPhase(yearbookId) == 'active' || yearbookPhase(yearbookId) == null || isAdminOrCreator(yearbookId);
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
     }
+
     match /yearbooks/{yearbookId} {
-      allow read, write: if request.auth != null;
+      allow read: if isMember(yearbookId);
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdminOrCreator(yearbookId)
+        && (!(request.resource.data.phase != resource.data.phase) || isCreator(yearbookId));
+      allow delete: if isCreator(yearbookId);
     }
+
     match /yearbookMembers/{memberId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || isMember(resource.data.yearbookId)
+        );
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && (
+          request.resource.data.role == 'member'
+          || (
+            request.resource.data.role == 'creator'
+            && get(/databases/$(database)/documents/yearbooks/$(request.resource.data.yearbookId)).data.createdBy == request.auth.uid
+          )
+        )
+        && canContribute(request.resource.data.yearbookId);
+      allow update, delete: if signedIn() && isCreator(resource.data.yearbookId);
     }
+
     match /prompts/{promptId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() && isMember(resource.data.yearbookId);
+      allow create: if signedIn() && isAdminOrCreator(request.resource.data.yearbookId);
+      allow update, delete: if signedIn() && isAdminOrCreator(resource.data.yearbookId);
     }
+
     match /drafts/{draftId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() && isMember(resource.data.yearbookId);
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && canContribute(request.resource.data.yearbookId);
+      allow delete: if signedIn() && isAdminOrCreator(resource.data.yearbookId);
     }
+
     match /polls/{pollId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() && isMember(resource.data.yearbookId);
+      allow create: if signedIn() && isAdminOrCreator(request.resource.data.yearbookId);
+      allow update, delete: if signedIn() && isAdminOrCreator(resource.data.yearbookId);
     }
+
     match /pollVotes/{voteId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && canContribute(get(/databases/$(database)/documents/polls/$(request.resource.data.pollId)).data.yearbookId);
+      allow delete: if signedIn();
     }
+
     match /superlatives/{superlativeId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() && isMember(resource.data.yearbookId);
+      allow create: if signedIn() && isAdminOrCreator(request.resource.data.yearbookId);
+      allow update: if signedIn()
+        && (isAdminOrCreator(resource.data.yearbookId) || canContribute(resource.data.yearbookId));
+      allow delete: if signedIn() && isAdminOrCreator(resource.data.yearbookId);
     }
+
     match /travels/{travelId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() && isMember(resource.data.yearbookId);
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && canContribute(request.resource.data.yearbookId);
+      allow delete: if signedIn() && isAdminOrCreator(resource.data.yearbookId);
+    }
+
+    match /yearbookCompilations/{compilationId} {
+      allow read: if signedIn()
+        && (
+          isMember(compilationId)
+          || (resource != null && resource.data.yearbookId != null && isMember(resource.data.yearbookId))
+        );
+      allow create: if signedIn() && isCreator(request.resource.data.yearbookId);
+      allow update: if signedIn() && isCreator(resource.data.yearbookId);
+      allow delete: if signedIn() && isCreator(resource.data.yearbookId);
     }
   }
 }

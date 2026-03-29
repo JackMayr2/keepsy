@@ -12,14 +12,26 @@ import {
 import { getFirebaseDb } from '@/src/config/firebase';
 import { logger } from '@/src/utils/logger';
 import type { User, UserCreateInput } from '@/src/types/user.types';
-import type { Yearbook, YearbookMember, YearbookMemberRole, YearbookWithRole, YearbookType } from '@/src/types/yearbook.types';
+import type {
+  Yearbook,
+  YearbookCompilation,
+  YearbookCompileStatus,
+  YearbookMember,
+  YearbookMemberRole,
+  YearbookPhase,
+  YearbookPrintStatus,
+  YearbookWithRole,
+  YearbookType,
+} from '@/src/types/yearbook.types';
 import type { Prompt, Draft, DraftStatus } from '@/src/types/prompt.types';
+import { effectiveYearbookPhase } from '@/src/utils/yearbookLifecycle';
 
 const USERS = 'users';
 const YEARBOOKS = 'yearbooks';
 const YEARBOOK_MEMBERS = 'yearbookMembers';
 const PROMPTS = 'prompts';
 const DRAFTS = 'drafts';
+const YEARBOOK_COMPILATIONS = 'yearbookCompilations';
 
 export async function getUser(uid: string): Promise<User | null> {
   try {
@@ -46,6 +58,11 @@ export async function getUser(uid: string): Promise<User | null> {
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
   };
   } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code === 'permission-denied') {
+      logger.warn('Firestore', 'getUser permission denied; returning null', { uid });
+      return null;
+    }
     logger.error('Firestore', 'getUser failed', e);
     throw e;
   }
@@ -100,6 +117,54 @@ export async function getMemberRole(
   return first ? (first.data().role as YearbookMemberRole) : null;
 }
 
+async function requireMemberRole(
+  yearbookId: string,
+  userId: string
+): Promise<YearbookMemberRole> {
+  const role = await getMemberRole(yearbookId, userId);
+  if (!role) throw new Error('You are not a member of this yearbook');
+  return role;
+}
+
+async function assertCanContribute(
+  yearbookId: string,
+  userId: string
+): Promise<{ yearbook: Yearbook; role: YearbookMemberRole; phase: YearbookPhase }> {
+  const yearbook = await getYearbook(yearbookId);
+  if (!yearbook) throw new Error('Yearbook not found');
+  const role = await requireMemberRole(yearbookId, userId);
+  const phase = effectiveYearbookPhase(yearbook);
+  if (phase !== 'active' && role !== 'creator' && role !== 'admin') {
+    throw new Error('This yearbook is locked for member contributions');
+  }
+  return { yearbook, role, phase };
+}
+
+async function assertCanModerate(
+  yearbookId: string,
+  userId: string
+): Promise<{ yearbook: Yearbook; role: YearbookMemberRole; phase: YearbookPhase }> {
+  const yearbook = await getYearbook(yearbookId);
+  if (!yearbook) throw new Error('Yearbook not found');
+  const role = await requireMemberRole(yearbookId, userId);
+  if (role !== 'creator' && role !== 'admin') {
+    throw new Error('Only creators/admins can do this');
+  }
+  return { yearbook, role, phase: effectiveYearbookPhase(yearbook) };
+}
+
+async function assertCreator(
+  yearbookId: string,
+  userId: string
+): Promise<Yearbook> {
+  const yearbook = await getYearbook(yearbookId);
+  if (!yearbook) throw new Error('Yearbook not found');
+  if (yearbook.createdBy !== userId) {
+    throw new Error('Only the creator can do this');
+  }
+  return yearbook;
+}
+
 export async function getYearbookMembers(yearbookId: string): Promise<YearbookMember[]> {
   const db = getFirebaseDb();
   const q = query(
@@ -127,7 +192,23 @@ export async function getYearbookMembers(yearbookId: string): Promise<YearbookMe
 
 export async function updateYearbook(
   yearbookId: string,
-  updates: { name?: string; type?: YearbookType; description?: string; dueDate?: string; aiVisualUrl?: string | null }
+  updates: {
+    name?: string;
+    type?: YearbookType;
+    description?: string;
+    dueDate?: string;
+    aiVisualUrl?: string | null;
+    phase?: YearbookPhase;
+    lockedAt?: Date | null;
+    lockedBy?: string | null;
+    reviewCompletedAt?: Date | null;
+    reviewCompletedBy?: string | null;
+    compileStatus?: YearbookCompileStatus;
+    printStatus?: YearbookPrintStatus;
+    archiveUrl?: string | null;
+    editorDraftUrl?: string | null;
+    selectedThemeId?: string | null;
+  }
 ): Promise<void> {
   const db = getFirebaseDb();
   const ref = doc(db, YEARBOOKS, yearbookId);
@@ -152,17 +233,26 @@ export async function getYearbook(id: string): Promise<Yearbook | null> {
     inviteCode: data.inviteCode ?? '',
     createdBy: data.createdBy ?? '',
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
+    phase: data.phase as YearbookPhase | undefined,
+    lockedAt: data.lockedAt?.toDate?.() ?? data.lockedAt ?? null,
+    lockedBy: data.lockedBy ?? null,
+    reviewCompletedAt: data.reviewCompletedAt?.toDate?.() ?? data.reviewCompletedAt ?? null,
+    reviewCompletedBy: data.reviewCompletedBy ?? null,
+    compileStatus: (data.compileStatus as YearbookCompileStatus | undefined) ?? 'idle',
+    printStatus: (data.printStatus as YearbookPrintStatus | undefined) ?? 'idle',
+    archiveUrl: data.archiveUrl ?? null,
+    editorDraftUrl: data.editorDraftUrl ?? null,
+    selectedThemeId: data.selectedThemeId ?? null,
     isTutorial: data.isTutorial === true,
   };
 }
 
 export async function getYearbooksForUser(userId: string): Promise<Array<YearbookWithRole>> {
-  try {
-    const db = getFirebaseDb();
-    const membersRef = collection(db, YEARBOOK_MEMBERS);
-    const q = query(membersRef, where('userId', '==', userId));
-    const snap = await getDocs(q);
-    const docs = [...snap.docs].sort((a, b) => {
+  const db = getFirebaseDb();
+  const membersRef = collection(db, YEARBOOK_MEMBERS);
+  const q = query(membersRef, where('userId', '==', userId));
+  const snap = await getDocs(q);
+  const docs = [...snap.docs].sort((a, b) => {
     const aAt = a.data().joinedAt?.toDate?.()?.getTime() ?? 0;
     const bAt = b.data().joinedAt?.toDate?.()?.getTime() ?? 0;
     return bAt - aAt;
@@ -170,19 +260,28 @@ export async function getYearbooksForUser(userId: string): Promise<Array<Yearboo
   const out: Array<YearbookWithRole> = [];
   for (const d of docs) {
     const memberData = d.data();
-    const yearbook = await getYearbook(memberData.yearbookId);
-    if (yearbook)
-      out.push({
-        ...yearbook,
-        role: (memberData.role as YearbookMemberRole) ?? 'member',
-      });
+    try {
+      const yearbook = await getYearbook(memberData.yearbookId);
+      if (yearbook) {
+        out.push({
+          ...yearbook,
+          role: (memberData.role as YearbookMemberRole) ?? 'member',
+        });
+      }
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'permission-denied') {
+        logger.warn('Firestore', 'Skipping yearbook due to permissions', {
+          yearbookId: memberData.yearbookId,
+          memberDocId: d.id,
+        });
+        continue;
+      }
+      throw e;
+    }
   }
-    logger.debug('Firestore', 'getYearbooksForUser', { userId, count: out.length });
-    return out;
-  } catch (e) {
-    logger.error('Firestore', 'getYearbooksForUser failed', e);
-    throw e;
-  }
+  logger.debug('Firestore', 'getYearbooksForUser', { userId, count: out.length });
+  return out;
 }
 
 export async function leaveYearbook(yearbookId: string, userId: string): Promise<void> {
@@ -252,6 +351,12 @@ export async function createYearbook(
     inviteCode,
     createdBy: userId,
     createdAt: new Date(),
+    phase: 'active',
+    compileStatus: 'idle',
+    printStatus: 'idle',
+    archiveUrl: null,
+    editorDraftUrl: null,
+    selectedThemeId: null,
   });
   await setDoc(doc(db, YEARBOOK_MEMBERS, `${id}_${userId}`), {
     yearbookId: id,
@@ -347,6 +452,16 @@ export async function getYearbookByInviteCode(code: string): Promise<Yearbook | 
     inviteCode: data.inviteCode ?? '',
     createdBy: data.createdBy ?? '',
     createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
+    phase: data.phase as YearbookPhase | undefined,
+    lockedAt: data.lockedAt?.toDate?.() ?? data.lockedAt ?? null,
+    lockedBy: data.lockedBy ?? null,
+    reviewCompletedAt: data.reviewCompletedAt?.toDate?.() ?? data.reviewCompletedAt ?? null,
+    reviewCompletedBy: data.reviewCompletedBy ?? null,
+    compileStatus: (data.compileStatus as YearbookCompileStatus | undefined) ?? 'idle',
+    printStatus: (data.printStatus as YearbookPrintStatus | undefined) ?? 'idle',
+    archiveUrl: data.archiveUrl ?? null,
+    editorDraftUrl: data.editorDraftUrl ?? null,
+    selectedThemeId: data.selectedThemeId ?? null,
     isTutorial: data.isTutorial === true,
   };
 }
@@ -432,9 +547,11 @@ export async function ensureDefaultPrompts(yearbookId: string): Promise<void> {
 
 export async function createPromptForYearbook(
   yearbookId: string,
+  actorUserId: string,
   text: string,
   type: Prompt['type']
 ): Promise<string> {
+  await assertCanModerate(yearbookId, actorUserId);
   const trimmed = text.trim();
   if (!trimmed) throw new Error('Prompt text is required');
   const existing = await getPrompts(yearbookId);
@@ -452,13 +569,18 @@ export async function createPromptForYearbook(
 }
 
 /** Deletes the prompt and all drafts that reference it. */
-export async function deletePromptAndDrafts(promptId: string): Promise<void> {
+export async function deletePromptAndDrafts(promptId: string, actorUserId: string): Promise<void> {
   const db = getFirebaseDb();
+  const promptRef = doc(db, PROMPTS, promptId);
+  const promptSnap = await getDoc(promptRef);
+  if (!promptSnap.exists()) throw new Error('Prompt not found');
+  const yearbookId = promptSnap.data().yearbookId as string;
+  await assertCanModerate(yearbookId, actorUserId);
   const draftQ = query(collection(db, DRAFTS), where('promptId', '==', promptId));
   const draftSnap = await getDocs(draftQ);
   const batch = writeBatch(db);
   draftSnap.docs.forEach((d) => batch.delete(d.ref));
-  batch.delete(doc(db, PROMPTS, promptId));
+  batch.delete(promptRef);
   await batch.commit();
 }
 
@@ -470,6 +592,7 @@ export async function saveDraft(
   status: DraftStatus,
   photoURL?: string
 ): Promise<void> {
+  await assertCanContribute(yearbookId, userId);
   const db = getFirebaseDb();
   const id = `${yearbookId}_${promptId}_${userId}`;
   const ref = doc(db, DRAFTS, id);
@@ -606,6 +729,11 @@ export async function getPolls(yearbookId: string): Promise<Array<{
 
 export async function votePoll(pollId: string, userId: string, optionIndex: number): Promise<void> {
   const db = getFirebaseDb();
+  const pollRef = doc(db, POLLS, pollId);
+  const pollSnap = await getDoc(pollRef);
+  if (!pollSnap.exists()) throw new Error('Poll not found');
+  const yearbookId = pollSnap.data().yearbookId as string;
+  await assertCanContribute(yearbookId, userId);
   const id = `${pollId}_${userId}`;
   await setDoc(doc(db, POLL_VOTES, id), { pollId, userId, optionIndex });
 }
@@ -659,9 +787,11 @@ export async function ensureDefaultPolls(yearbookId: string): Promise<void> {
 
 export async function createPollForYearbook(
   yearbookId: string,
+  actorUserId: string,
   question: string,
   options: string[]
 ): Promise<string> {
+  await assertCanModerate(yearbookId, actorUserId);
   const q = question.trim();
   const opts = options.map((x) => x.trim()).filter(Boolean);
   if (!q || opts.length < 2) throw new Error('Add a question and at least two options');
@@ -672,13 +802,18 @@ export async function createPollForYearbook(
 }
 
 /** Deletes the poll and all votes for it. */
-export async function deletePollAndVotes(pollId: string): Promise<void> {
+export async function deletePollAndVotes(pollId: string, actorUserId: string): Promise<void> {
   const db = getFirebaseDb();
+  const pollRef = doc(db, POLLS, pollId);
+  const pollSnap = await getDoc(pollRef);
+  if (!pollSnap.exists()) throw new Error('Poll not found');
+  const yearbookId = pollSnap.data().yearbookId as string;
+  await assertCanModerate(yearbookId, actorUserId);
   const voteQ = query(collection(db, POLL_VOTES), where('pollId', '==', pollId));
   const voteSnap = await getDocs(voteQ);
   const batch = writeBatch(db);
   voteSnap.docs.forEach((d) => batch.delete(d.ref));
-  batch.delete(doc(db, POLLS, pollId));
+  batch.delete(pollRef);
   await batch.commit();
 }
 
@@ -741,7 +876,12 @@ export async function ensureDefaultSuperlatives(yearbookId: string): Promise<voi
   }
 }
 
-export async function createSuperlativeForYearbook(yearbookId: string, category: string): Promise<string> {
+export async function createSuperlativeForYearbook(
+  yearbookId: string,
+  actorUserId: string,
+  category: string
+): Promise<string> {
+  await assertCanModerate(yearbookId, actorUserId);
   const c = category.trim();
   if (!c) throw new Error('Category is required');
   const db = getFirebaseDb();
@@ -750,8 +890,14 @@ export async function createSuperlativeForYearbook(yearbookId: string, category:
   return ref.id;
 }
 
-export async function deleteSuperlativeById(superlativeId: string): Promise<void> {
-  await deleteDoc(doc(getFirebaseDb(), SUPERLATIVES, superlativeId));
+export async function deleteSuperlativeById(superlativeId: string, actorUserId: string): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = doc(db, SUPERLATIVES, superlativeId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Superlative not found');
+  const yearbookId = snap.data().yearbookId as string;
+  await assertCanModerate(yearbookId, actorUserId);
+  await deleteDoc(ref);
 }
 
 export async function nominateSuperlative(
@@ -763,6 +909,8 @@ export async function nominateSuperlative(
   const ref = doc(db, SUPERLATIVES, superlativeId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
+  const yearbookId = snap.data().yearbookId as string;
+  await assertCanContribute(yearbookId, userId);
   const nominations = { ...(snap.data().nominations ?? {}), [userId]: nominatedUserId };
   await setDoc(ref, { ...snap.data(), nominations }, { merge: true });
 }
@@ -963,6 +1111,7 @@ export async function createTravel(
     taggedUserIds?: string[];
   }
 ): Promise<string> {
+  await assertCanContribute(yearbookId, userId);
   const db = getFirebaseDb();
   const ref = doc(collection(db, TRAVELS));
   const caption = input.caption ?? input.notes ?? null;
@@ -987,4 +1136,261 @@ export async function createTravel(
     createdAt: new Date(),
   });
   return ref.id;
+}
+
+export async function setYearbookPhaseByCreator(
+  yearbookId: string,
+  actorUserId: string,
+  phase: YearbookPhase
+): Promise<void> {
+  const yearbook = await assertCreator(yearbookId, actorUserId);
+  const now = new Date();
+  const updates: Parameters<typeof updateYearbook>[1] = {
+    phase,
+  };
+  if (phase === 'locked') {
+    updates.lockedAt = now;
+    updates.lockedBy = actorUserId;
+  }
+  if (phase === 'review') {
+    updates.lockedAt = yearbook.lockedAt instanceof Date ? yearbook.lockedAt : now;
+    updates.lockedBy = yearbook.lockedBy ?? actorUserId;
+  }
+  if (phase === 'active') {
+    updates.compileStatus = 'idle';
+    updates.printStatus = 'idle';
+  }
+  await updateYearbook(yearbookId, updates);
+}
+
+type CompilationSnapshot = {
+  promptIds: string[];
+  draftIds: string[];
+  pollIds: string[];
+  superlativeIds: string[];
+  travelIds: string[];
+  memberIds: string[];
+};
+
+async function buildCompilationSnapshot(yearbookId: string): Promise<CompilationSnapshot> {
+  const [prompts, polls, superlatives, travels, members, submissions] = await Promise.all([
+    getPrompts(yearbookId),
+    getPolls(yearbookId),
+    getSuperlatives(yearbookId),
+    getTravels(yearbookId),
+    getYearbookMembers(yearbookId),
+    getSubmissionsForPrompt(yearbookId),
+  ]);
+  return {
+    promptIds: prompts.map((x) => x.id),
+    draftIds: submissions.map((x) => x.id),
+    pollIds: polls.map((x) => x.id),
+    superlativeIds: superlatives.map((x) => x.id),
+    travelIds: travels.map((x) => x.id),
+    memberIds: members.map((x) => x.id),
+  };
+}
+
+function deterministicPagePlan(snapshot: CompilationSnapshot, themeId: string | null): YearbookCompilation['pagePlan'] {
+  const sections = [
+    { key: 'cover', items: ['cover'] },
+    { key: 'members', items: snapshot.memberIds },
+    { key: 'prompts', items: snapshot.promptIds },
+    { key: 'polls', items: snapshot.pollIds },
+    { key: 'superlatives', items: snapshot.superlativeIds },
+    { key: 'travels', items: snapshot.travelIds },
+    { key: 'closing', items: ['closing'] },
+  ];
+  let page = 1;
+  const plan: YearbookCompilation['pagePlan'] = [];
+  for (const section of sections) {
+    const chunkSize = section.key === 'cover' || section.key === 'closing' ? 1 : 4;
+    if (section.items.length === 0) continue;
+    for (let i = 0; i < section.items.length; i += chunkSize) {
+      const chunk = section.items.slice(i, i + chunkSize);
+      plan.push({
+        pageNumber: page++,
+        section: section.key,
+        layout: `${themeId ?? 'classic'}_${section.key}_${chunk.length}`,
+        items: chunk,
+      });
+    }
+  }
+  return plan;
+}
+
+export async function createYearbookCompilationSnapshot(
+  yearbookId: string,
+  actorUserId: string,
+  selectedThemeId: string | null
+): Promise<string> {
+  const db = getFirebaseDb();
+  const yearbook = await assertCreator(yearbookId, actorUserId);
+  if (effectiveYearbookPhase(yearbook) !== 'review') {
+    throw new Error('Yearbook must be in review to start compilation');
+  }
+  const snapshot = await buildCompilationSnapshot(yearbookId);
+  const pagePlan = deterministicPagePlan(snapshot, selectedThemeId);
+  const ref = doc(db, YEARBOOK_COMPILATIONS, yearbookId);
+  await setDoc(ref, {
+    yearbookId,
+    phase: 'compiling',
+    createdAt: new Date(),
+    createdBy: actorUserId,
+    selectedThemeId: selectedThemeId ?? null,
+    sectionOrder: ['cover', 'members', 'prompts', 'polls', 'superlatives', 'travels', 'closing'],
+    compileStatus: 'queued',
+    printStatus: 'idle',
+    pagePlan,
+    snapshot,
+    editorNotes: null,
+    draftPdfUrl: null,
+    exportPdfUrl: null,
+    archiveUrl: null,
+    printPackageUrl: null,
+  });
+  await updateYearbook(yearbookId, {
+    phase: 'compiling',
+    compileStatus: 'queued',
+    printStatus: 'idle',
+    selectedThemeId: selectedThemeId ?? null,
+  });
+  return ref.id;
+}
+
+export async function runYearbookPrintPipeline(
+  compilationId: string,
+  actorUserId: string
+): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = doc(db, YEARBOOK_COMPILATIONS, compilationId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Compilation not found');
+  const data = snap.data();
+  const yearbookId = data.yearbookId as string;
+  await assertCreator(yearbookId, actorUserId);
+  await setDoc(
+    ref,
+    {
+      compileStatus: 'succeeded',
+      printStatus: 'ready',
+      draftPdfUrl: `keepsy://yearbooks/${yearbookId}/compilations/${compilationId}/draft.pdf`,
+      printPackageUrl: `keepsy://yearbooks/${yearbookId}/compilations/${compilationId}/print.zip`,
+      phase: 'editableDraft',
+    },
+    { merge: true }
+  );
+  await updateYearbook(yearbookId, {
+    phase: 'editableDraft',
+    compileStatus: 'succeeded',
+    printStatus: 'ready',
+    editorDraftUrl: `keepsy://yearbooks/${yearbookId}/compilations/${compilationId}/editor`,
+  });
+}
+
+export async function getLatestCompilationForYearbook(
+  yearbookId: string
+): Promise<YearbookCompilation | null> {
+  const db = getFirebaseDb();
+  const d = await getDoc(doc(db, YEARBOOK_COMPILATIONS, yearbookId));
+  if (!d.exists()) return null;
+  const data = d.data();
+  return {
+    id: d.id,
+    yearbookId: data.yearbookId,
+    phase: (data.phase as YearbookPhase) ?? 'compiling',
+    createdAt: data.createdAt?.toDate?.() ?? data.createdAt,
+    createdBy: data.createdBy ?? '',
+    selectedThemeId: data.selectedThemeId ?? null,
+    sectionOrder: data.sectionOrder ?? [],
+    compileStatus: (data.compileStatus as YearbookCompileStatus) ?? 'idle',
+    printStatus: (data.printStatus as YearbookPrintStatus) ?? 'idle',
+    pagePlan: data.pagePlan ?? [],
+    editorNotes: data.editorNotes ?? null,
+    draftPdfUrl: data.draftPdfUrl ?? null,
+    exportPdfUrl: data.exportPdfUrl ?? null,
+    archiveUrl: data.archiveUrl ?? null,
+    printPackageUrl: data.printPackageUrl ?? null,
+  };
+}
+
+export async function updateCompilationEditorialDraft(
+  compilationId: string,
+  actorUserId: string,
+  updates: {
+    pagePlan?: YearbookCompilation['pagePlan'];
+    editorNotes?: string;
+  }
+): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = doc(db, YEARBOOK_COMPILATIONS, compilationId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Compilation not found');
+  const data = snap.data();
+  const yearbookId = data.yearbookId as string;
+  await assertCanModerate(yearbookId, actorUserId);
+  await setDoc(
+    ref,
+    {
+      pagePlan: updates.pagePlan ?? data.pagePlan ?? [],
+      editorNotes: updates.editorNotes ?? data.editorNotes ?? null,
+      phase: 'editableDraft',
+    },
+    { merge: true }
+  );
+}
+
+export async function finalizeCompilationAndExport(
+  compilationId: string,
+  actorUserId: string
+): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = doc(db, YEARBOOK_COMPILATIONS, compilationId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Compilation not found');
+  const data = snap.data();
+  const yearbookId = data.yearbookId as string;
+  await assertCreator(yearbookId, actorUserId);
+  const exportPdfUrl = `keepsy://yearbooks/${yearbookId}/compilations/${compilationId}/export.pdf`;
+  const archiveUrl = `keepsy://yearbooks/${yearbookId}/archive/index.json`;
+  await setDoc(
+    ref,
+    {
+      phase: 'archived',
+      exportPdfUrl,
+      archiveUrl,
+    },
+    { merge: true }
+  );
+  await updateYearbook(yearbookId, {
+    phase: 'archived',
+    archiveUrl,
+    compileStatus: 'succeeded',
+    printStatus: 'ready',
+  });
+}
+
+export async function markYearbookReviewDoneByCreator(
+  yearbookId: string,
+  actorUserId: string,
+  selectedThemeId: string | null
+): Promise<{ compilationId: string }> {
+  const yearbook = await assertCreator(yearbookId, actorUserId);
+  const phase = effectiveYearbookPhase(yearbook);
+  if (phase !== 'locked' && phase !== 'review') {
+    throw new Error('Yearbook must be locked before review can be completed');
+  }
+  await updateYearbook(yearbookId, {
+    phase: 'review',
+    reviewCompletedAt: new Date(),
+    reviewCompletedBy: actorUserId,
+    selectedThemeId: selectedThemeId ?? null,
+  });
+  const compilationId = await createYearbookCompilationSnapshot(
+    yearbookId,
+    actorUserId,
+    selectedThemeId
+  );
+  await runYearbookPrintPipeline(compilationId, actorUserId);
+  return { compilationId };
 }

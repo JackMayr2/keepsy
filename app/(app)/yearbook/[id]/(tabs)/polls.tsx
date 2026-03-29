@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useYearbookId } from '@/src/contexts/YearbookIdContext';
 import { useYearbookNav, useScrollToHideNav } from '@/src/contexts/YearbookNavContext';
+import { useYearbookPermissions } from '@/src/hooks/useYearbookPermissions';
 import {
   getPolls,
   votePoll,
@@ -39,6 +40,7 @@ export default function PollsTab() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { navVisible, setNavVisible } = useYearbookNav();
+  const { canContribute, phase } = useYearbookPermissions(id);
   const { onScroll, scrollEventThrottle } = useScrollToHideNav();
   const listPaddingBottom = LIST_PADDING_BASE + (navVisible ? TAB_BAR_CONTENT_HEIGHT : 0) + insets.bottom;
   const listPaddingTop =
@@ -99,6 +101,7 @@ export default function PollsTab() {
 
   const handleVote = async (pollId: string, optionIndex: number) => {
     if (!userId) return;
+    if (!canContribute) return;
     await votePoll(pollId, userId, optionIndex);
     load();
   };
@@ -123,6 +126,13 @@ export default function PollsTab() {
 
   return (
     <Container edgeToEdge>
+      {!canContribute ? (
+        <View style={styles.phaseBanner}>
+          <Text variant="caption" color="secondary">
+            Yearbook {phase}: members are read-only.
+          </Text>
+        </View>
+      ) : null}
       <FlatList
         data={polls}
         keyExtractor={(poll) => poll.id}
@@ -154,6 +164,7 @@ export default function PollsTab() {
                     },
                   ]}
                   onPress={() => handleVote(poll.id, i)}
+                  disabled={!canContribute}
                 >
                   <View style={styles.optionContent}>
                     <DSIcon
@@ -207,4 +218,8 @@ const styles = StyleSheet.create({
   },
   optionLabel: { textAlign: 'center', flexShrink: 1 },
   resultRow: { paddingVertical: 6 },
+  phaseBanner: {
+    paddingHorizontal: LIST_HORIZONTAL_PADDING,
+    paddingTop: 8,
+  },
 });
